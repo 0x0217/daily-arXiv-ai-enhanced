@@ -129,7 +129,7 @@ async function fetchAvailableDates() {
     const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_(.+)\.jsonl/;
     const dates = [];
     availableDateFiles = {}; // Reset the file mapping
-    
+
     files.forEach(file => {
       const match = file.match(dateRegex);
       if (match && match[1] && match[2]) {
