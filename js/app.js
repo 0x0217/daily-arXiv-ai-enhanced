@@ -416,19 +416,24 @@ function initEventListeners() {
 }
 
 // Helper function to determine which AI enhanced file language is available for a date
+// This function is language-agnostic and will work with any language (Chinese, Korean, English, etc.)
 function getAIEnhancedLanguage(date, fileList) {
-  const koreanFile = `${date}_AI_enhanced_Korean.jsonl`;
-  const chineseFile = `${date}_AI_enhanced_Chinese.jsonl`;
+  // Look for any AI enhanced file for the given date
+  const aiEnhancedFile = fileList.find(file => 
+    file.startsWith(`${date}_AI_enhanced_`) && file.endsWith('.jsonl')
+  );
   
-  if (fileList.includes(koreanFile)) {
-    return 'Korean';
-  } else if (fileList.includes(chineseFile)) {
-    return 'Chinese';
+  if (aiEnhancedFile) {
+    // Extract language from filename: date_AI_enhanced_LANGUAGE.jsonl
+    const match = aiEnhancedFile.match(/_AI_enhanced_(.+)\.jsonl$/);
+    return match ? match[1] : null;
   }
+  
   return null;
 }
 
-// Global variable to store available file info
+// Global variable to store available file info (date -> language mapping)
+// Supports any language dynamically (Chinese, Korean, English, Spanish, etc.)
 let availableDateFiles = {};
 
 async function fetchAvailableDates() {
@@ -441,13 +446,13 @@ async function fetchAvailableDates() {
     const text = await response.text();
     const files = text.trim().split('\n');
 
-    const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_(Chinese|Korean)\.jsonl/;
+    const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_(.+)\.jsonl/;
     const dates = [];
     availableDateFiles = {}; // Reset the file mapping
     
     files.forEach(file => {
       const match = file.match(dateRegex);
-      if (match && match[1]) {
+      if (match && match[1] && match[2]) {
         const date = match[1];
         const language = match[2];
         dates.push(date);
@@ -1126,7 +1131,11 @@ async function loadPapersByDateRange(startDate, endDate) {
     const allPaperData = {};
     
     for (const date of validDatesInRange) {
-      const language = availableDateFiles[date] || 'Chinese';
+      const language = availableDateFiles[date];
+      if (!language) {
+        console.warn(`No AI enhanced file found for date: ${date}, skipping...`);
+        continue;
+      }
       const response = await fetch(`data/${date}_AI_enhanced_${language}.jsonl`);
       const text = await response.text();
       const dataPapers = parseJsonlData(text, date);

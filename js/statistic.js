@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initEventListeners();
   fetchGitHubStats();
-  
+
   fetchAvailableDates().then(() => {
     if (availableDates.length > 0) {
       loadPapersByDateRange(availableDates[0], availableDates[0]);
@@ -43,7 +43,7 @@ async function fetchGitHubStats() {
     const data = await response.json();
     const starCount = data.stargazers_count;
     const forkCount = data.forks_count;
-    
+
     document.getElementById('starCount').textContent = starCount;
     document.getElementById('forkCount').textContent = forkCount;
   } catch (error) {
@@ -56,10 +56,10 @@ async function fetchGitHubStats() {
 function toggleDatePicker() {
   const datePicker = document.getElementById('datePickerModal');
   datePicker.classList.toggle('active');
-  
+
   if (datePicker.classList.contains('active')) {
     document.body.style.overflow = 'hidden';
-    
+
     // 重新初始化日期选择器以确保它反映最新的可用日期
     if (flatpickrInstance) {
       flatpickrInstance.setDate(currentDate, false);
@@ -76,7 +76,7 @@ function initEventListeners() {
     e.stopPropagation();
     toggleDatePicker();
   });
-  
+
   // 点击模态框背景时关闭
   const datePickerModal = document.querySelector('.date-picker-modal');
   datePickerModal.addEventListener('click', (event) => {
@@ -84,35 +84,36 @@ function initEventListeners() {
       toggleDatePicker();
     }
   });
-  
+
   // 阻止日期选择器内容区域的点击事件冒泡
   const datePickerContent = document.querySelector('.date-picker-content');
   datePickerContent.addEventListener('click', (e) => {
     e.stopPropagation();
   });
-  
+
   document.getElementById('dateRangeMode').addEventListener('change', toggleRangeMode);
-  
+
   // 添加侧边栏关闭按钮事件
   const closeButton = document.querySelector('.close-sidebar');
   if (closeButton) {
     closeButton.addEventListener('click', closeSidebar);
   }
-  
+
   // 点击侧边栏外部时关闭侧边栏
   document.addEventListener('click', (event) => {
     const sidebar = document.getElementById('paperSidebar');
     const isClickInside = sidebar.contains(event.target);
-    const isClickOnKeyword = event.target.closest('.keyword-item') || 
+    const isClickOnKeyword = event.target.closest('.keyword-item') ||
                             event.target.closest('.keyword-cloud text');
-    
+
     if (!isClickInside && !isClickOnKeyword && sidebar.classList.contains('active')) {
       closeSidebar();
     }
   });
 }
 
-// Global variable to store available file info
+// Global variable to store available file info (date -> language mapping)
+// Supports any language dynamically (Chinese, Korean, English, Spanish, etc.)
 let availableDateFiles = {};
 
 async function fetchAvailableDates() {
@@ -125,13 +126,13 @@ async function fetchAvailableDates() {
     const text = await response.text();
     const files = text.trim().split('\n');
 
-    const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_(Chinese|Korean)\.jsonl/;
+    const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_(.+)\.jsonl/;
     const dates = [];
     availableDateFiles = {}; // Reset the file mapping
     
     files.forEach(file => {
       const match = file.match(dateRegex);
-      if (match && match[1]) {
+      if (match && match[1] && match[2]) {
         const date = match[1];
         const language = match[2];
         dates.push(date);
@@ -151,17 +152,17 @@ async function fetchAvailableDates() {
 
 function initDatePicker() {
   const datepickerInput = document.getElementById('datepicker');
-  
+
   if (flatpickrInstance) {
     flatpickrInstance.destroy();
   }
-  
+
   // 创建可用日期的映射，用于禁用无效日期
   const enabledDatesMap = {};
   availableDates.forEach(date => {
     enabledDatesMap[date] = true;
   });
-  
+
   // 配置 Flatpickr
   flatpickrInstance = flatpickr(datepickerInput, {
     inline: true,
@@ -170,8 +171,8 @@ function initDatePicker() {
     enable: [
       function(date) {
         // 只启用有效日期
-        const dateStr = date.getFullYear() + "-" + 
-                        String(date.getMonth() + 1).padStart(2, '0') + "-" + 
+        const dateStr = date.getFullYear() + "-" +
+                        String(date.getMonth() + 1).padStart(2, '0') + "-" +
                         String(date.getDate()).padStart(2, '0');
         return !!enabledDatesMap[dateStr];
       }
@@ -193,7 +194,7 @@ function initDatePicker() {
       }
     }
   });
-  
+
   // 隐藏日期输入框
   const inputElement = document.querySelector('.flatpickr-input');
   if (inputElement) {
@@ -202,14 +203,14 @@ function initDatePicker() {
 }
 
 function formatDateForAPI(date) {
-  return date.getFullYear() + "-" + 
-         String(date.getMonth() + 1).padStart(2, '0') + "-" + 
+  return date.getFullYear() + "-" +
+         String(date.getMonth() + 1).padStart(2, '0') + "-" +
          String(date.getDate()).padStart(2, '0');
 }
 
 function toggleRangeMode() {
   isRangeMode = document.getElementById('dateRangeMode').checked;
-  
+
   if (flatpickrInstance) {
     flatpickrInstance.set('mode', isRangeMode ? 'range' : 'single');
   }
@@ -220,20 +221,20 @@ async function loadPapersByDateRange(startDate, endDate) {
   const validDatesInRange = availableDates.filter(date => {
     return date >= startDate && date <= endDate;
   });
-  
+
   if (validDatesInRange.length === 0) {
     alert('No available papers in the selected date range.');
     return;
   }
-  
-  if (startDate === endDate) {  
+
+  if (startDate === endDate) {
     currentDate = startDate;
     document.getElementById('currentDate').textContent = formatDate(startDate);
   } else {
     currentDate = `${startDate} - ${endDate}`;
     document.getElementById('currentDate').textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
   }
-  
+
   const container = document.getElementById('papersList');
   container.innerHTML = `
     <div class="loading-container">
@@ -241,18 +242,22 @@ async function loadPapersByDateRange(startDate, endDate) {
       <p>Loading papers from ${formatDate(startDate)} to ${formatDate(endDate)}...</p>
     </div>
   `;
-  
+
   try {
     // 加载所有日期的论文数据
     const allPaperData = {};
     allPapersData = []; // 重置全局论文数据
-    
+
     for (const date of validDatesInRange) {
-      const language = availableDateFiles[date] || 'Chinese';
-    const response = await fetch(`data/${date}_AI_enhanced_${language}.jsonl`);
+      const language = availableDateFiles[date];
+      if (!language) {
+        console.warn(`No AI enhanced file found for date: ${date}, skipping...`);
+        continue;
+      }
+      const response = await fetch(`data/${date}_AI_enhanced_${language}.jsonl`);
       const text = await response.text();
       const dataPapers = parseJsonlData(text, date);
-      
+
       // 合并数据
       Object.keys(dataPapers).forEach(category => {
         if (!allPaperData[category]) {
@@ -263,7 +268,7 @@ async function loadPapersByDateRange(startDate, endDate) {
         allPapersData = allPapersData.concat(dataPapers[category]);
       });
     }
-    
+
     paperData = allPaperData;
 
     // 提取所有论文标题
@@ -278,13 +283,13 @@ async function loadPapersByDateRange(startDate, endDate) {
     const extractKeywords = (text) => {
       // 移除特殊字符和多余空格
       const cleanText = text.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-      
+
       // 使用 compromise 进行文本处理
       const doc = nlp(cleanText);
-      
+
       // 提取名词短语和重要词汇
       const terms = new Set();
-      
+
       // 提取名词短语
       doc.match('#Noun+').forEach(match => {
         const phrase = match.text().toLowerCase();
@@ -292,7 +297,7 @@ async function loadPapersByDateRange(startDate, endDate) {
           terms.add(phrase);
         }
       });
-      
+
       // 提取形容词+名词组合
       doc.match('(#Adjective+ #Noun+)').forEach(match => {
         const phrase = match.text().toLowerCase();
@@ -300,27 +305,27 @@ async function loadPapersByDateRange(startDate, endDate) {
           terms.add(phrase);
         }
       });
-      
+
       // 定义停用词
       const stopWords = new Set([
-        'the', 'is', 'at', 'which', 'and', 'or', 'in', 'to', 'for', 'of', 
-        'with', 'by', 'on', 'this', 'that', 'our', 'method', 'based', 
+        'the', 'is', 'at', 'which', 'and', 'or', 'in', 'to', 'for', 'of',
+        'with', 'by', 'on', 'this', 'that', 'our', 'method', 'based',
         'towards', 'via', 'multi', 'text', 'using', 'aware', 'data', 'from',
-        'paper', 'propose', 'proposed', 'approach', 'model', 'system', 
-        'framework', 'results', 'show', 'demonstrates', 'experimental', 
+        'paper', 'propose', 'proposed', 'approach', 'model', 'system',
+        'framework', 'results', 'show', 'demonstrates', 'experimental',
         'experiments', 'evaluation', 'performance', 'state', 'art', 'sota',
-        'dataset', 'datasets', 'task', 'tasks', 'learning', 'neural', 
-        'network', 'networks', 'deep', 'machine', 'artificial', 'intelligence', 
+        'dataset', 'datasets', 'task', 'tasks', 'learning', 'neural',
+        'network', 'networks', 'deep', 'machine', 'artificial', 'intelligence',
         'ai', 'ml', 'dl'
       ]);
-      
+
       // 过滤停用词和短词
       const filteredTerms = Array.from(terms).filter(term => {
         const words = term.split(' ');
-        return words.every(word => word.length > 2) && 
+        return words.every(word => word.length > 2) &&
                !words.every(word => stopWords.has(word));
       });
-      
+
       // 统计词频
       const termFreq = {};
       filteredTerms.forEach(term => {
@@ -330,14 +335,14 @@ async function loadPapersByDateRange(startDate, endDate) {
           termFreq[term] *= 1.5;
         }
       });
-      
+
       // 计算 TF 值（词频）
       const tfScores = {};
       const totalTerms = Object.values(termFreq).reduce((a, b) => a + b, 0);
       Object.entries(termFreq).forEach(([term, freq]) => {
         tfScores[term] = freq / totalTerms;
       });
-      
+
       // 按 TF 值排序并返回前10个关键词/短语
       return Object.entries(tfScores)
         .sort(([,a], [,b]) => b - a)
@@ -348,21 +353,21 @@ async function loadPapersByDateRange(startDate, endDate) {
     // 处理所有摘要
     const allKeywords = new Map();
     const keywordTrends = new Map(); // 添加关键词趋势数据结构
-    
+
     // 初始化日期数据结构
     validDatesInRange.forEach(date => {
       keywordTrends.set(date, new Map());
     });
-    
+
     // 按日期统计关键词
     allTitle.forEach((abstract, index) => {
       const date = validDatesInRange[Math.floor(index / (allTitle.length / validDatesInRange.length))];
       const keywords = extractKeywords(abstract);
-      
+
       keywords.forEach(keyword => {
         // 更新总体统计
         allKeywords.set(keyword, (allKeywords.get(keyword) || 0) + 1);
-        
+
         // 更新日期维度统计
         const dateStats = keywordTrends.get(date);
         dateStats.set(keyword, (dateStats.get(keyword) || 0) + 1);
@@ -411,7 +416,7 @@ async function loadPapersByDateRange(startDate, endDate) {
             `).join('')}
           </div>
         </div>
-        
+
         ${startDate !== endDate ? `
         <h2 class="trend-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -451,7 +456,7 @@ async function loadPapersByDateRange(startDate, endDate) {
 
       // 创建颜色比例尺，使用更柔和的颜色
       const color = d3.scaleOrdinal()
-        .range(['#4e79a7', '#f28e2c', '#59a14f', '#e15759', '#76b7b2', 
+        .range(['#4e79a7', '#f28e2c', '#59a14f', '#e15759', '#76b7b2',
                 '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab']);
 
       // 添加X轴网格线
@@ -478,12 +483,12 @@ async function loadPapersByDateRange(startDate, endDate) {
       function determineDateFormat(dates) {
         const startDate = new Date(dates[0]);
         const endDate = new Date(dates[dates.length - 1]);
-        
+
         // 检查是否跨年
         const sameYear = startDate.getFullYear() === endDate.getFullYear();
         // 检查是否在同一个月
         const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
-        
+
         if (sameMonth) {
           return d3.timeFormat("%d"); // 只显示日
         } else if (sameYear) {
@@ -495,7 +500,7 @@ async function loadPapersByDateRange(startDate, endDate) {
 
       // 获取日期格式化函数
       const dateFormat = determineDateFormat(validDatesInRange);
-      
+
       // 添加X轴
       svg.append('g')
         .attr('class', 'x-axis')
@@ -535,7 +540,7 @@ async function loadPapersByDateRange(startDate, endDate) {
       const startDate = new Date(validDatesInRange[0]);
       const endDate = new Date(validDatesInRange[validDatesInRange.length - 1]);
       let xAxisTitle = "";
-      
+
       if (startDate.getFullYear() === endDate.getFullYear()) {
         if (startDate.getMonth() === endDate.getMonth()) {
           xAxisTitle = `${startDate.getFullYear()}/${String(startDate.getMonth() + 1).padStart(2, '0')}`;
@@ -543,7 +548,7 @@ async function loadPapersByDateRange(startDate, endDate) {
           xAxisTitle = `${startDate.getFullYear()}`;
         }
       }
-      
+
       if (xAxisTitle) {
         svg.append("text")
           .attr("transform", `translate(${width/2}, ${height + margin.bottom - 5})`)
@@ -641,16 +646,16 @@ async function loadPapersByDateRange(startDate, endDate) {
       legend.style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
           const keyword = d.keyword;
-          
+
           // 降低其他线条和区域的透明度
           areas.style('opacity', 0.1);
           paths.style('opacity', 0.1);
-          
+
           // 高亮当前选中的线条和区域
           svg.selectAll('.area')
             .filter(p => p.keyword === keyword)
             .style('opacity', 0.9);
-          
+
           svg.selectAll('.line')
             .filter(p => p.keyword === keyword)
             .style('opacity', 1)
@@ -663,7 +668,7 @@ async function loadPapersByDateRange(startDate, endDate) {
             .style('stroke-width', 2);
         });
     }
-    
+
   } catch (error) {
     console.error('加载论文数据失败:', error);
     container.innerHTML = `
@@ -677,27 +682,27 @@ async function loadPapersByDateRange(startDate, endDate) {
 
 function parseJsonlData(jsonlText, date) {
   const result = {};
-  
+
   const lines = jsonlText.trim().split('\n');
-  
+
   lines.forEach(line => {
     try {
       const paper = JSON.parse(line);
-      
+
       if (!paper.categories) {
         return;
       }
-      
+
       let allCategories = Array.isArray(paper.categories) ? paper.categories : [paper.categories];
-      
+
       const primaryCategory = allCategories[0];
-      
+
       if (!result[primaryCategory]) {
         result[primaryCategory] = [];
       }
-      
+
       const summary = paper.AI && paper.AI.tldr ? paper.AI.tldr : paper.summary;
-      
+
       result[primaryCategory].push({
         title: paper.title,
         url: paper.abs || paper.pdf || `https://arxiv.org/abs/${paper.id}`,
@@ -716,7 +721,7 @@ function parseJsonlData(jsonlText, date) {
       console.error('解析JSON行失败:', error, line);
     }
   });
-  
+
   return result;
 }
 
@@ -734,16 +739,16 @@ function showRelatedPapers(keyword) {
     const sidebar = document.getElementById('paperSidebar');
     const selectedKeywordElement = document.getElementById('selectedKeyword');
     const relatedPapersContainer = document.getElementById('relatedPapers');
-    
+
     // 更新关键词显示
     selectedKeywordElement.textContent = 'Keyword: ' + keyword;
-    
+
     // 查找包含关键词的论文
     const relatedPapers = allPapersData.filter(paper => {
         const searchText = (paper.title + ' ' + paper.summary).toLowerCase();
         return searchText.includes(keyword.toLowerCase());
     });
-    
+
     // 生成相关论文的HTML
     const papersHTML = relatedPapers.map((paper, index) => `
         <div class="paper-card">
@@ -756,12 +761,12 @@ function showRelatedPapers(keyword) {
             <div class="paper-summary">${paper.summary}</div>
         </div>
     `).join('');
-    
+
     // 更新侧边栏内容
-    relatedPapersContainer.innerHTML = relatedPapers.length > 0 
-        ? papersHTML 
+    relatedPapersContainer.innerHTML = relatedPapers.length > 0
+        ? papersHTML
         : '<p>No related papers found.</p>';
-    
+
     // 显示侧边栏
     sidebar.classList.add('active');
 }
