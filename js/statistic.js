@@ -112,6 +112,9 @@ function initEventListeners() {
   });
 }
 
+// Global variable to store available file info
+let availableDateFiles = {};
+
 async function fetchAvailableDates() {
   try {
     const response = await fetch('assets/file-list.txt');
@@ -122,12 +125,17 @@ async function fetchAvailableDates() {
     const text = await response.text();
     const files = text.trim().split('\n');
 
-    const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_Chinese\.jsonl/;
+    const dateRegex = /(\d{4}-\d{2}-\d{2})_AI_enhanced_(Chinese|Korean)\.jsonl/;
     const dates = [];
+    availableDateFiles = {}; // Reset the file mapping
+    
     files.forEach(file => {
       const match = file.match(dateRegex);
       if (match && match[1]) {
-        dates.push(match[1]);
+        const date = match[1];
+        const language = match[2];
+        dates.push(date);
+        availableDateFiles[date] = language;
       }
     });
     availableDates = [...new Set(dates)];
@@ -240,7 +248,8 @@ async function loadPapersByDateRange(startDate, endDate) {
     allPapersData = []; // 重置全局论文数据
     
     for (const date of validDatesInRange) {
-      const response = await fetch(`data/${date}_AI_enhanced_Chinese.jsonl`);
+      const language = availableDateFiles[date] || 'Chinese';
+    const response = await fetch(`data/${date}_AI_enhanced_${language}.jsonl`);
       const text = await response.text();
       const dataPapers = parseJsonlData(text, date);
       
