@@ -242,46 +242,23 @@ function downloadPaper(paper) {
   const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
   const downloadUrl = paper.url.replace('abs', 'pdf');
 
-  // Force download by fetching the PDF and creating a blob
-  fetch(downloadUrl)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch PDF');
-      }
-      return response.blob();
-    })
-    .then(blob => {
-      // Create blob URL and force download
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      link.style.display = 'none';
+  // Create a temporary link with download attribute to force download
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  link.style.display = 'none';
 
-      // Add to DOM, click, and clean up
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  // Some browsers need the link to be in the DOM
+  document.body.appendChild(link);
 
-      // Clean up blob URL after a short delay
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+  // Trigger the download
+  link.click();
 
-      // Show success notification
-      showNotification(`Download completed: ${filename}`, 'success');
-    })
-    .catch(error => {
-      console.error('Download failed:', error);
-      // Fallback to simple link download if fetch fails
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  // Clean up
+  document.body.removeChild(link);
 
-      showNotification(`Download started: ${filename}`, 'warning');
-    });
+  // Show notification
+  showNotification(`Download started: ${filename}`, 'success');
 }
 
 // 显示下载选项模态框
@@ -1430,20 +1407,20 @@ function showPaperDetails(paper, paperIndex) {
   const downloadPdfButton = document.getElementById('downloadPdfButton');
   const showPdfButton = document.getElementById('showPdfButton');
 
-  if (bookmarkButton) {
+    if (bookmarkButton) {
     // Update bookmark button appearance based on current state
-    const isBookmarked = isBookmarkedPaper(paper);
-    bookmarkButton.title = isBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks';
+    const isBookmarkedPaper = isBookmarked(paper);
+    bookmarkButton.title = isBookmarkedPaper ? 'Remove from bookmarks' : 'Add to bookmarks';
     const bookmarkIcon = bookmarkButton.querySelector('path');
     if (bookmarkIcon) {
-      bookmarkIcon.setAttribute('fill', isBookmarked ? '#ffd700' : 'none');
+      bookmarkIcon.setAttribute('fill', isBookmarkedPaper ? '#ffd700' : 'none');
     }
 
     bookmarkButton.paperData = paper;
     bookmarkButton.addEventListener('click', () => {
       toggleBookmark(paper);
       // Update button appearance after toggle
-      const newIsBookmarked = isBookmarkedPaper(paper);
+      const newIsBookmarked = isBookmarked(paper);
       bookmarkButton.title = newIsBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks';
       const icon = bookmarkButton.querySelector('path');
       if (icon) {

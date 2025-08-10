@@ -370,14 +370,7 @@ function showPaperDetails(paper, paperIndex) {
 
       ${paper.details ? `<h3>Abstract</h3><div class="original-abstract">${paper.details}</div>` : ''}
 
-      <div class="bookmark-paper-actions">
-        <button class="remove-bookmark-button" onclick="removeBookmark('${paper.id}', '${paper.date}')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-          </svg>
-          Remove Bookmark
-        </button>
-      </div>
+
     </div>
   `;
 
@@ -463,50 +456,25 @@ function downloadPaper(paper) {
   const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
   const downloadUrl = paper.url.replace('abs', 'pdf');
 
-  // Force download by fetching the PDF and creating a blob
-  fetch(downloadUrl)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch PDF');
-      }
-      return response.blob();
-    })
-    .then(blob => {
-      // Create blob URL and force download
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      link.style.display = 'none';
+  // Create a temporary link with download attribute to force download
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  link.style.display = 'none';
 
-      // Add to DOM, click, and clean up
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  // Some browsers need the link to be in the DOM
+  document.body.appendChild(link);
 
-      // Clean up blob URL after a short delay
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+  // Trigger the download
+  link.click();
 
-      // Show success notification
-      if (typeof showNotification === 'function') {
-        showNotification(`Download completed: ${filename}`, 'success');
-      }
-    })
-    .catch(error => {
-      console.error('Download failed:', error);
-      // Fallback to simple link download if fetch fails
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  // Clean up
+  document.body.removeChild(link);
 
-      if (typeof showNotification === 'function') {
-        showNotification(`Download started: ${filename}`, 'warning');
-      }
-    });
+  // Show notification
+  if (typeof showNotification === 'function') {
+    showNotification(`Download started: ${filename}`, 'success');
+  }
 }
 
 // 格式化日期
