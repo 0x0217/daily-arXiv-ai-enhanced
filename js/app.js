@@ -7,14 +7,20 @@ let flatpickrInstance = null;
 let isRangeMode = false;
 let activeKeywords = []; // 存储激活的关键词
 let userKeywords = []; // 存储用户的关键词
+let excludeKeywords = []; // 存储排除的关键词
 let activeAuthors = []; // 存储激活的作者
 let userAuthors = []; // 存储用户的作者
+let bookmarkedPapers = []; // 存储收藏的论文
 let currentPaperIndex = 0; // 当前查看的论文索引
 let currentFilteredPapers = []; // 当前过滤后的论文列表
+let translationCache = {}; // 缓存翻译结果
+let currentPaperData = null; // 当前显示的论文数据
 
 // 加载用户的关键词设置
 function loadUserKeywords() {
   const savedKeywords = localStorage.getItem('preferredKeywords');
+  const savedExcludeKeywords = localStorage.getItem('excludeKeywords');
+
   if (savedKeywords) {
     try {
       userKeywords = JSON.parse(savedKeywords);
@@ -30,7 +36,33 @@ function loadUserKeywords() {
     activeKeywords = [];
   }
 
+  if (savedExcludeKeywords) {
+    try {
+      excludeKeywords = JSON.parse(savedExcludeKeywords);
+    } catch (error) {
+      console.error('解析排除关键词失败:', error);
+      excludeKeywords = [];
+    }
+  } else {
+    excludeKeywords = [];
+  }
+
   renderKeywordTags();
+}
+
+// 加载收藏的论文
+function loadBookmarkedPapers() {
+  const savedBookmarks = localStorage.getItem('bookmarkedPapers');
+  if (savedBookmarks) {
+    try {
+      bookmarkedPapers = JSON.parse(savedBookmarks);
+    } catch (error) {
+      console.error('解析收藏论文失败:', error);
+      bookmarkedPapers = [];
+    }
+  } else {
+    bookmarkedPapers = [];
+  }
 }
 
 // 加载用户的作者设置
@@ -238,8 +270,448 @@ function toggleAuthorFilter(author) {
   renderPapers();
 }
 
+// 收藏论文
+function toggleBookmark(paper) {
+  const paperKey = `${paper.id}-${paper.date}`;
+  const existingIndex = bookmarkedPapers.findIndex(p => `${p.id}-${p.date}` === paperKey);
+
+  if (existingIndex === -1) {
+    // 添加收藏
+    const bookmarkData = {
+      ...paper,
+      bookmarkedAt: new Date().toISOString()
+    };
+    bookmarkedPapers.push(bookmarkData);
+    showNotification('Paper bookmarked successfully!', 'success');
+  } else {
+    // 取消收藏
+    bookmarkedPapers.splice(existingIndex, 1);
+    showNotification('Bookmark removed!', 'info');
+  }
+
+  // 保存到 localStorage
+  localStorage.setItem('bookmarkedPapers', JSON.stringify(bookmarkedPapers));
+
+  // 更新按钮状态
+  updateBookmarkButton(paper);
+}
+
+// 检查论文是否已收藏
+function isBookmarked(paper) {
+  const paperKey = `${paper.id}-${paper.date}`;
+  return bookmarkedPapers.some(p => `${p.id}-${p.date}` === paperKey);
+}
+
+// 更新收藏按钮状态
+function updateBookmarkButton(paper) {
+  const bookmarkButton = document.querySelector('.bookmark-button');
+  if (bookmarkButton) {
+    const isBookmarkedPaper = isBookmarked(paper);
+    bookmarkButton.classList.toggle('bookmarked', isBookmarkedPaper);
+    bookmarkButton.title = isBookmarkedPaper ? 'Remove from bookmarks' : 'Add to bookmarks';
+  }
+}
+
+// 下载论文PDF
+function downloadPaper(paper) {
+  showDownloadModal(paper);
+}
+
+// 显示下载选项模态框
+function showDownloadModal(paper) {
+  const modal = document.createElement('div');
+  modal.className = 'download-modal';
+  modal.innerHTML = `
+    <div class="download-modal-content">
+      <div class="download-modal-header">
+        <h3>Download Paper</h3>
+        <button class="close-download-modal">×</button>
+      </div>
+      <div class="download-modal-body">
+        <div class="download-info">
+          <p><strong>Title:</strong> ${paper.title.substring(0, 100)}${paper.title.length > 100 ? '...' : ''}</p>
+          <p><strong>Paper ID:</strong> ${paper.id}</p>
+        </div>
+
+        <div class="download-options">
+          <h4>Download Options:</h4>
+
+          <div class="download-format-section">
+            <label>
+              <input type="radio" name="downloadFormat" value="pdf" checked>
+              PDF (Original)
+            </label>
+            <label>
+              <input type="radio" name="downloadFormat" value="source">
+              Source Files (if available)
+            </label>
+          </div>
+
+          <div class="filename-section">
+            <label for="customFilename">Custom Filename:</label>
+            <input type="text" id="customFilename" value="${generateFilename(paper)}" placeholder="Enter filename">
+            <small>The file extension will be added automatically</small>
+          </div>
+
+          <div class="folder-hint">
+            <p><strong>Note:</strong> Due to browser security limitations, files will be downloaded to your default Downloads folder. You can organize them later or use browser settings to specify download locations.</p>
+
+            <div class="download-tips">
+              <h5>💡 Download Tips:</h5>
+              <ul>
+                <li>Use Chrome's "Ask where to save each file" setting for custom locations</li>
+                <li>Create folders like "Papers", "Research", or "ArXiv" for better organization</li>
+                <li>Consider using a download manager for better file organization</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="download-modal-footer">
+        <button class="button secondary cancel-download">Cancel</button>
+        <button class="button primary confirm-download">Download</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // 添加事件监听器
+  const closeButton = modal.querySelector('.close-download-modal');
+  const cancelButton = modal.querySelector('.cancel-download');
+  const confirmButton = modal.querySelector('.confirm-download');
+
+  const closeModal = () => {
+    document.body.removeChild(modal);
+  };
+
+  closeButton.addEventListener('click', closeModal);
+  cancelButton.addEventListener('click', closeModal);
+
+  confirmButton.addEventListener('click', () => {
+    const format = modal.querySelector('input[name="downloadFormat"]:checked').value;
+    const customFilename = modal.querySelector('#customFilename').value.trim();
+
+    executeDownload(paper, format, customFilename);
+    closeModal();
+  });
+
+  // 点击模态框背景关闭
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+}
+
+// 生成文件名
+function generateFilename(paper) {
+  const safeTitle = paper.title
+    .substring(0, 50)
+    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+
+  return `${paper.id}_${safeTitle}`;
+}
+
+// 执行下载
+function executeDownload(paper, format, customFilename) {
+  let downloadUrl;
+  let filename;
+
+  if (format === 'pdf') {
+    downloadUrl = paper.url.replace('abs', 'pdf');
+    filename = customFilename || generateFilename(paper);
+    if (!filename.endsWith('.pdf')) {
+      filename += '.pdf';
+    }
+  } else if (format === 'source') {
+    // 尝试源文件下载
+    downloadUrl = paper.url.replace('abs', 'src');
+    filename = customFilename || generateFilename(paper);
+    if (!filename.endsWith('.tar.gz')) {
+      filename += '.tar.gz';
+    }
+  }
+
+  // 创建下载链接
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  link.target = '_blank';
+
+  // 添加到DOM并触发下载
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // 显示下载通知
+  showDownloadNotification(filename, format);
+}
+
+// 显示下载通知
+function showDownloadNotification(filename, format) {
+  const formatText = format === 'pdf' ? 'PDF' : 'Source files';
+  showNotification(`${formatText} download started: ${filename}`, 'success');
+
+  // 保存下载历史
+  saveDownloadHistory(filename, format);
+}
+
+// 保存下载历史
+function saveDownloadHistory(filename, format) {
+  const downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+
+  downloadHistory.unshift({
+    filename,
+    format,
+    timestamp: new Date().toISOString(),
+    date: new Date().toLocaleDateString()
+  });
+
+  // 保留最近50次下载记录
+  if (downloadHistory.length > 50) {
+    downloadHistory.splice(50);
+  }
+
+  localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
+}
+
+// 显示通知
+function showNotification(message, type = 'info') {
+  // 创建通知元素
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+
+  // 添加样式
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 10000;
+    font-weight: 500;
+    animation: slideInNotification 0.3s ease;
+  `;
+
+  // 添加到页面
+  document.body.appendChild(notification);
+
+  // 3秒后自动移除
+  setTimeout(() => {
+    notification.style.animation = 'slideOutNotification 0.3s ease';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// 翻译文本
+async function translateText(text, targetLang = 'zh') {
+  const cacheKey = `${text}_${targetLang}`;
+
+  // 检查缓存
+  if (translationCache[cacheKey]) {
+    return translationCache[cacheKey];
+  }
+
+  try {
+    // 使用 MyMemory 免费翻译 API (无需 API key)
+    const encodedText = encodeURIComponent(text);
+    const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`);
+    const data = await response.json();
+
+    if (data.responseStatus === 200 && data.responseData) {
+      const translation = data.responseData.translatedText;
+      // 缓存翻译结果
+      translationCache[cacheKey] = translation;
+      // 保存到 localStorage
+      localStorage.setItem('translationCache', JSON.stringify(translationCache));
+      return translation;
+    } else {
+      throw new Error('Translation failed');
+    }
+  } catch (error) {
+    console.error('Translation error:', error);
+    // 如果翻译失败，返回原文
+    return text;
+  }
+}
+
+// 加载翻译缓存
+function loadTranslationCache() {
+  const savedCache = localStorage.getItem('translationCache');
+  if (savedCache) {
+    try {
+      translationCache = JSON.parse(savedCache);
+    } catch (error) {
+      console.error('解析翻译缓存失败:', error);
+      translationCache = {};
+    }
+  }
+}
+
+// 翻译论文摘要
+async function translatePaperSummary(paper, targetLang = 'zh') {
+  const summaryElement = document.querySelector('.paper-summary-content');
+  const translateButton = document.querySelector('.translate-button');
+
+  if (!summaryElement || !translateButton) return;
+
+  // 显示加载状态
+  translateButton.disabled = true;
+  translateButton.innerHTML = `
+    <svg class="loading-spinner" viewBox="0 0 24 24" width="20" height="20">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416" style="animation: spin 1s linear infinite;">
+        <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+        <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+    Translating...
+  `;
+
+  try {
+    // 翻译标题、摘要和各个部分
+    const translatedTitle = await translateText(paper.title, targetLang);
+    const translatedSummary = await translateText(paper.summary, targetLang);
+
+    let translatedMotivation = '';
+    let translatedMethod = '';
+    let translatedResult = '';
+    let translatedConclusion = '';
+    let translatedAbstract = '';
+
+    if (paper.motivation) {
+      translatedMotivation = await translateText(paper.motivation, targetLang);
+    }
+    if (paper.method) {
+      translatedMethod = await translateText(paper.method, targetLang);
+    }
+    if (paper.result) {
+      translatedResult = await translateText(paper.result, targetLang);
+    }
+    if (paper.conclusion) {
+      translatedConclusion = await translateText(paper.conclusion, targetLang);
+    }
+    if (paper.details) {
+      translatedAbstract = await translateText(paper.details, targetLang);
+    }
+
+    // 更新页面内容
+    updatePaperDetailsWithTranslation(paper, {
+      title: translatedTitle,
+      summary: translatedSummary,
+      motivation: translatedMotivation,
+      method: translatedMethod,
+      result: translatedResult,
+      conclusion: translatedConclusion,
+      abstract: translatedAbstract
+    });
+
+    // 更新按钮状态
+    translateButton.disabled = false;
+    translateButton.innerHTML = `
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
+      </svg>
+      Show Original
+    `;
+
+    // 切换按钮功能到显示原文
+    translateButton.onclick = () => showOriginalContent(paper);
+
+    showNotification('Translation completed!', 'success');
+  } catch (error) {
+    console.error('Translation failed:', error);
+    translateButton.disabled = false;
+    translateButton.innerHTML = `
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
+      </svg>
+      Translate
+    `;
+    showNotification('Translation failed. Please try again.', 'error');
+  }
+}
+
+// 显示原始内容
+function showOriginalContent(paper) {
+  updatePaperDetailsWithTranslation(paper, {
+    title: paper.title,
+    summary: paper.summary,
+    motivation: paper.motivation || '',
+    method: paper.method || '',
+    result: paper.result || '',
+    conclusion: paper.conclusion || '',
+    abstract: paper.details || ''
+  });
+
+  const translateButton = document.querySelector('.translate-button');
+  if (translateButton) {
+    translateButton.innerHTML = `
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
+      </svg>
+      Translate
+    `;
+    translateButton.onclick = () => translatePaperSummary(paper);
+  }
+}
+
+// 更新论文详情页面内容
+function updatePaperDetailsWithTranslation(paper, translations) {
+  const modalTitle = document.getElementById('modalTitle');
+  const paperIndex = currentPaperIndex + 1;
+
+  if (modalTitle) {
+    modalTitle.innerHTML = `<span class="paper-index-badge">${paperIndex}</span> ${translations.title}`;
+  }
+
+  // 更新各个部分的内容
+  const summaryContent = document.querySelector('.paper-summary-content');
+  if (summaryContent) {
+    summaryContent.innerHTML = translations.summary;
+  }
+
+  const motivationSection = document.querySelector('.paper-section[data-section="motivation"] p');
+  if (motivationSection && translations.motivation) {
+    motivationSection.innerHTML = translations.motivation;
+  }
+
+  const methodSection = document.querySelector('.paper-section[data-section="method"] p');
+  if (methodSection && translations.method) {
+    methodSection.innerHTML = translations.method;
+  }
+
+  const resultSection = document.querySelector('.paper-section[data-section="result"] p');
+  if (resultSection && translations.result) {
+    resultSection.innerHTML = translations.result;
+  }
+
+  const conclusionSection = document.querySelector('.paper-section[data-section="conclusion"] p');
+  if (conclusionSection && translations.conclusion) {
+    conclusionSection.innerHTML = translations.conclusion;
+  }
+
+  const abstractSection = document.querySelector('.original-abstract');
+  if (abstractSection && translations.abstract) {
+    abstractSection.innerHTML = translations.abstract;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
+
+  // 设置GitHub链接
+  setGitHubLinks();
 
   fetchGitHubStats();
 
@@ -249,6 +721,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // 加载用户作者
   loadUserAuthors();
 
+  // 加载收藏的论文
+  loadBookmarkedPapers();
+
+  // 加载翻译缓存
+  loadTranslationCache();
+
   fetchAvailableDates().then(() => {
     if (availableDates.length > 0) {
       loadPapersByDate(availableDates[0]);
@@ -256,9 +734,49 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// 获取当前仓库信息
+function getCurrentRepoInfo() {
+  const currentUrl = window.location.hostname;
+  let username = 'dw-dengwei'; // fallback
+  let repoName = 'daily-arXiv-ai-enhanced'; // fallback
+
+  // If running on GitHub Pages, extract repo info from URL
+  if (currentUrl.includes('github.io')) {
+    const parts = currentUrl.split('.');
+    if (parts.length >= 2) {
+      username = parts[0];
+      const pathname = window.location.pathname;
+      repoName = pathname.split('/')[1] || 'daily-arXiv-ai-enhanced';
+    }
+  }
+
+  return { username, repoName };
+}
+
+// 设置GitHub链接
+function setGitHubLinks() {
+  const { username, repoName } = getCurrentRepoInfo();
+  const repoUrl = `https://github.com/${username}/${repoName}`;
+
+  // 更新header中的GitHub链接
+  const githubRepoLink = document.getElementById('githubRepoLink');
+  if (githubRepoLink) {
+    githubRepoLink.href = repoUrl;
+  }
+
+  // 更新footer中的GitHub链接
+  const githubFooterLink = document.getElementById('githubFooterLink');
+  if (githubFooterLink) {
+    githubFooterLink.href = repoUrl;
+  }
+}
+
 async function fetchGitHubStats() {
   try {
-    const response = await fetch('https://api.github.com/repos/dw-dengwei/daily-arXiv-ai-enhanced');
+    const { username, repoName } = getCurrentRepoInfo();
+    const repoUrl = `https://api.github.com/repos/${username}/${repoName}`;
+
+    const response = await fetch(repoUrl);
     const data = await response.json();
     const starCount = data.stargazers_count;
     const forkCount = data.forks_count;
@@ -728,6 +1246,16 @@ function renderPapers() {
   // 创建匹配论文的集合
   let filteredPapers = [...papers];
 
+  // 首先过滤掉包含排除关键词的论文
+  if (excludeKeywords.length > 0) {
+    filteredPapers = filteredPapers.filter(paper => {
+      const searchText = `${paper.title} ${paper.summary}`.toLowerCase();
+      return !excludeKeywords.some(keyword =>
+        searchText.includes(keyword.toLowerCase())
+      );
+    });
+  }
+
   // 关键词和作者匹配，但不过滤，只排序
   if (activeKeywords.length > 0 || activeAuthors.length > 0) {
     // 对论文进行排序，将匹配的论文放在前面
@@ -884,6 +1412,9 @@ function showPaperDetails(paper, paperIndex) {
   const pdfLink = document.getElementById('pdfLink');
   const htmlLink = document.getElementById('htmlLink');
 
+  // 存储当前论文数据
+  currentPaperData = paper;
+
   // 重置模态框的滚动位置
   modalBody.scrollTop = 0;
 
@@ -943,35 +1474,43 @@ function showPaperDetails(paper, paperIndex) {
       <p><strong>Categories: </strong>${categoryDisplay}</p>
       <p><strong>Date: </strong>${formatDate(paper.date)}</p>
 
+      <div class="translation-controls">
+        <button class="translate-button button secondary">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
+          </svg>
+          Translate
+        </button>
+      </div>
 
       <h3>TL;DR</h3>
-      <p>${highlightedSummary}</p>
+      <div class="paper-summary-content">${highlightedSummary}</div>
 
       <div class="paper-sections">
-        ${paper.motivation ? `<div class="paper-section"><h4>Motivation</h4><p>${highlightedMotivation}</p></div>` : ''}
-        ${paper.method ? `<div class="paper-section"><h4>Method</h4><p>${highlightedMethod}</p></div>` : ''}
-        ${paper.result ? `<div class="paper-section"><h4>Result</h4><p>${highlightedResult}</p></div>` : ''}
-        ${paper.conclusion ? `<div class="paper-section"><h4>Conclusion</h4><p>${highlightedConclusion}</p></div>` : ''}
+        ${paper.motivation ? `<div class="paper-section" data-section="motivation"><h4>Motivation</h4><p>${highlightedMotivation}</p></div>` : ''}
+        ${paper.method ? `<div class="paper-section" data-section="method"><h4>Method</h4><p>${highlightedMethod}</p></div>` : ''}
+        ${paper.result ? `<div class="paper-section" data-section="result"><h4>Result</h4><p>${highlightedResult}</p></div>` : ''}
+        ${paper.conclusion ? `<div class="paper-section" data-section="conclusion"><h4>Conclusion</h4><p>${highlightedConclusion}</p></div>` : ''}
       </div>
 
-      ${highlightedAbstract ? `<h3>Abstract</h3><p class="original-abstract">${highlightedAbstract}</p>` : ''}
+      ${highlightedAbstract ? `<h3>Abstract</h3><div class="original-abstract">${highlightedAbstract}</div>` : ''}
 
-      <div class="pdf-preview-section">
-        <div class="pdf-header">
-          <h3>PDF Preview</h3>
-          <button class="pdf-expand-btn" onclick="togglePdfSize(this)">
-            <svg class="expand-icon" viewBox="0 0 24 24" width="24" height="24">
-              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-            </svg>
-            <svg class="collapse-icon" viewBox="0 0 24 24" width="24" height="24" style="display: none;">
-              <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="pdf-container">
-          <iframe src="${paper.url.replace('abs', 'pdf')}" width="100%" height="800px" frameborder="0"></iframe>
-        </div>
+      <div class="paper-actions">
+        <button class="bookmark-button ${isBookmarked(paper) ? 'bookmarked' : ''}" title="${isBookmarked(paper) ? 'Remove from bookmarks' : 'Add to bookmarks'}">
+          <svg class="bookmark-icon" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="${isBookmarked(paper) ? '#ffd700' : 'none'}" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          ${isBookmarked(paper) ? 'Bookmarked' : 'Bookmark'}
+        </button>
+        <button class="download-button" title="Download PDF">
+          <svg class="download-icon" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Download PDF
+        </button>
       </div>
+
+
     </div>
   `;
 
@@ -980,6 +1519,25 @@ function showPaperDetails(paper, paperIndex) {
   document.getElementById('paperLink').href = paper.url;
   document.getElementById('pdfLink').href = paper.url.replace('abs', 'pdf');
   document.getElementById('htmlLink').href = paper.url.replace('abs', 'html');
+
+    // Add event listeners to the action buttons
+  const bookmarkButton = document.querySelector('.bookmark-button');
+  const downloadButton = document.querySelector('.download-button');
+  const translateButton = document.querySelector('.translate-button');
+
+  if (bookmarkButton) {
+    bookmarkButton.paperData = paper;
+    bookmarkButton.addEventListener('click', () => toggleBookmark(paper));
+  }
+
+  if (downloadButton) {
+    downloadButton.paperData = paper;
+    downloadButton.addEventListener('click', () => downloadPaper(paper));
+  }
+
+  if (translateButton) {
+    translateButton.addEventListener('click', () => translatePaperSummary(paper));
+  }
   // 提示词来自：https://papers.cool/
   prompt = `请你阅读这篇文章${paper.url.replace('abs', 'pdf')},总结一下这篇文章解决的问题、相关工作、研究方法、做了什么实验及其结果、结论，最后整体总结一下这篇文章的内容`
   document.getElementById('kimiChatLink').href = `https://www.kimi.com/_prefill_chat?prefill_prompt=${prompt}&system_prompt=你是一个学术助手，后面的对话将围绕着以下论文内容进行，已经通过链接给出了论文的PDF和论文已有的FAQ。用户将继续向你咨询论文的相关问题，请你作出专业的回答，不要出现第一人称，当涉及到分点回答时，鼓励你以markdown格式输出。&send_immediately=true&force_search=false`;
