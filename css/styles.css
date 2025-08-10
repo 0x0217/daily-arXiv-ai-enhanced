@@ -351,10 +351,11 @@ header {
   gap: 10px;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  width: 100%;
+  flex: 1;
   justify-content: flex-start; /* 改为左对齐 */
   flex-wrap: nowrap; /* 禁止换行 */
   white-space: nowrap; /* 确保内容不会换行 */
+  min-width: 0; /* 允许收缩 */
   /* 添加鼠标滚轮横向滚动支持 */
   overflow-y: hidden;
 }
@@ -2156,21 +2157,9 @@ footer {
 .search-container {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: var(--bg-color);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  margin: 8px 0;
-  min-width: 0;
-}
-
-.search-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  margin: 0;
+  margin-left: 16px;
+  min-width: 250px;
+  flex-shrink: 0;
 }
 
 .search-input-wrapper {
