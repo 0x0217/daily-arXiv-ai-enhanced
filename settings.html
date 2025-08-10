@@ -37,14 +37,14 @@
                         </div>
                     </a>
                 </div>
-                
+
                 <div class="header-center">
                     <a href="index.html" class="site-logo">
                         <img src="assets/logo2-removebg-preview.png" alt="Daily arXiv AI Enhanced Logo" class="logo-image">
                         <span class="site-title">Daily arXiv AI Enhanced</span>
                     </a>
                 </div>
-                
+
                 <div class="header-controls">
                     <a href="index.html" class="back-button">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -66,20 +66,20 @@
                     <div class="settings-section">
                         <h2 class="keyword-section-title">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7V17C3 18.1 3.9 18.99 5 18.99L16 19C16.67 19 17.27 18.67 17.63 18.16L22 12L17.63 5.84ZM16 17H5V7H16L19.55 12L16 17Z" fill="currentColor"/>
+                                <path d="M19 13H5c-1.1 0-2-.9-2-2s.9-2 2-2h14c1.1 0 2 .9 2 2s-.9 2-2 2zm0-8H5c-1.1 0-2-.9-2-2s.9-2 2-2h14c1.1 0 2 .9 2 2s-.9 2-2 2zm0 16H5c-1.1 0-2-.9-2-2s.9-2 2-2h14c1.1 0 2 .9 2 2s-.9 2-2 2z" fill="currentColor"/>
                             </svg>
-                            Interested Keywords
+                            Scraper Configuration
                         </h2>
                         <div class="settings-card">
                             <div class="settings-item">
-                                <div class="tag-selector">
-                                    <div class="selected-tags" id="selectedKeywords">
-                                        <div class="empty-tag-message" id="emptyTagMessage">No keywords added yet. Add some keywords below.</div>
-                                    </div>
-                                    <div class="tag-input-container">
-                                        <input type="text" id="keywordInput" class="settings-input" placeholder="Enter a keyword and press Enter...">
-                                        <button id="addKeyword" class="add-tag-button">Add</button>
-                                    </div>
+                                <div class="info-message">
+                                    <p><strong>Keyword filtering has moved to the scraper level!</strong></p>
+                                    <p>Configure include/exclude keywords in your repository environment variables:</p>
+                                    <ul>
+                                        <li><code>INCLUDE_KEYWORDS</code>: Papers must match these keywords</li>
+                                        <li><code>EXCLUDE_KEYWORDS</code>: Papers matching these will be filtered out</li>
+                                    </ul>
+                                    <p>Use the search box in the main interface to filter displayed papers by title.</p>
                                 </div>
                             </div>
                         </div>
@@ -114,7 +114,7 @@
                 </div>
             </div>
         </main>
-        
+
         <footer>
             <div class="footer-content">
                 <p>&copy; 2025 daily-arXiv-ai-enhanced | <a href="https://github.com/dw-dengwei/daily-arXiv-ai-enhanced" target="_blank">GitHub</a></p>
@@ -124,4 +124,4 @@
 
     <script src="js/settings.js"></script>
 </body>
-</html> 
+</html>
