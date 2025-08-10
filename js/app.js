@@ -242,19 +242,46 @@ function downloadPaper(paper) {
   const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
   const downloadUrl = paper.url.replace('abs', 'pdf');
 
-  // Create download link and trigger download immediately
-  const link = document.createElement('a');
-  link.href = downloadUrl;
-  link.download = filename;
-  link.target = '_blank';
+  // Force download by fetching the PDF and creating a blob
+  fetch(downloadUrl)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch PDF');
+      }
+      return response.blob();
+    })
+    .then(blob => {
+      // Create blob URL and force download
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.style.display = 'none';
 
-  // Add to DOM and trigger download
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+      // Add to DOM, click, and clean up
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-  // Show brief notification
-  showNotification(`Download started: ${filename}`, 'success');
+      // Clean up blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+
+      // Show success notification
+      showNotification(`Download completed: ${filename}`, 'success');
+    })
+    .catch(error => {
+      console.error('Download failed:', error);
+      // Fallback to simple link download if fetch fails
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showNotification(`Download started: ${filename}`, 'warning');
+    });
 }
 
 // 显示下载选项模态框
@@ -1386,14 +1413,7 @@ function showPaperDetails(paper, paperIndex) {
 
       ${highlightedAbstract ? `<h3>Abstract</h3><div class="original-abstract">${highlightedAbstract}</div>` : ''}
 
-      <div class="paper-actions">
-        <button class="bookmark-button ${isBookmarked(paper) ? 'bookmarked' : ''}" title="${isBookmarked(paper) ? 'Remove from bookmarks' : 'Add to bookmarks'}">
-          <svg class="bookmark-icon" viewBox="0 0 24 24" width="20" height="20">
-            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="${isBookmarked(paper) ? '#ffd700' : 'none'}" stroke="currentColor" stroke-width="2"/>
-          </svg>
-          ${isBookmarked(paper) ? 'Bookmarked' : 'Bookmark'}
-        </button>
-      </div>
+
 
 
     </div>
@@ -1406,13 +1426,30 @@ function showPaperDetails(paper, paperIndex) {
   document.getElementById('htmlLink').href = paper.url.replace('abs', 'html');
 
     // Add event listeners to the action buttons
-  const bookmarkButton = document.querySelector('.bookmark-button');
+  const bookmarkButton = document.getElementById('bookmarkButton');
   const downloadPdfButton = document.getElementById('downloadPdfButton');
   const showPdfButton = document.getElementById('showPdfButton');
 
   if (bookmarkButton) {
+    // Update bookmark button appearance based on current state
+    const isBookmarked = isBookmarkedPaper(paper);
+    bookmarkButton.title = isBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks';
+    const bookmarkIcon = bookmarkButton.querySelector('path');
+    if (bookmarkIcon) {
+      bookmarkIcon.setAttribute('fill', isBookmarked ? '#ffd700' : 'none');
+    }
+
     bookmarkButton.paperData = paper;
-    bookmarkButton.addEventListener('click', () => toggleBookmark(paper));
+    bookmarkButton.addEventListener('click', () => {
+      toggleBookmark(paper);
+      // Update button appearance after toggle
+      const newIsBookmarked = isBookmarkedPaper(paper);
+      bookmarkButton.title = newIsBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks';
+      const icon = bookmarkButton.querySelector('path');
+      if (icon) {
+        icon.setAttribute('fill', newIsBookmarked ? '#ffd700' : 'none');
+      }
+    });
   }
 
   if (downloadPdfButton) {

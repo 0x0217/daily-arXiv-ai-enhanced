@@ -388,8 +388,16 @@ function showPaperDetails(paper, paperIndex) {
   document.getElementById('htmlLink').href = paper.url.replace('abs', 'html');
 
   // Add event listeners for footer buttons
+  const bookmarkButton = document.getElementById('bookmarkButton');
   const downloadPdfButton = document.getElementById('downloadPdfButton');
   const showPdfButton = document.getElementById('showPdfButton');
+
+  if (bookmarkButton) {
+    // In bookmarks page, this will always be a remove action
+    bookmarkButton.addEventListener('click', () => {
+      removeBookmark(paper.id, paper.date);
+    });
+  }
 
   if (downloadPdfButton) {
     downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
@@ -455,21 +463,50 @@ function downloadPaper(paper) {
   const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
   const downloadUrl = paper.url.replace('abs', 'pdf');
 
-  // Create download link and trigger download immediately
-  const link = document.createElement('a');
-  link.href = downloadUrl;
-  link.download = filename;
-  link.target = '_blank';
+  // Force download by fetching the PDF and creating a blob
+  fetch(downloadUrl)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch PDF');
+      }
+      return response.blob();
+    })
+    .then(blob => {
+      // Create blob URL and force download
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.style.display = 'none';
 
-  // Add to DOM and trigger download
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+      // Add to DOM, click, and clean up
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-  // Show brief notification if showNotification exists
-  if (typeof showNotification === 'function') {
-    showNotification(`Download started: ${filename}`, 'success');
-  }
+      // Clean up blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+
+      // Show success notification
+      if (typeof showNotification === 'function') {
+        showNotification(`Download completed: ${filename}`, 'success');
+      }
+    })
+    .catch(error => {
+      console.error('Download failed:', error);
+      // Fallback to simple link download if fetch fails
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if (typeof showNotification === 'function') {
+        showNotification(`Download started: ${filename}`, 'warning');
+      }
+    });
 }
 
 // 格式化日期
