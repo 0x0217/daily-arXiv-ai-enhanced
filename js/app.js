@@ -242,23 +242,43 @@ function downloadPaper(paper) {
   const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
   const downloadUrl = paper.url.replace('abs', 'pdf');
 
-  // Create a temporary link with download attribute to force download
-  const link = document.createElement('a');
-  link.href = downloadUrl;
-  link.download = filename;
-  link.style.display = 'none';
+  // Since cross-origin download attribute doesn't work,
+  // we'll fetch the PDF and create a blob URL for download
+  showNotification('Starting download...', 'info');
 
-  // Some browsers need the link to be in the DOM
-  document.body.appendChild(link);
+  fetch(downloadUrl, {
+    method: 'GET',
+    mode: 'cors',
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.blob();
+  })
+  .then(blob => {
+    // Create blob URL and download
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
 
-  // Trigger the download
-  link.click();
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-  // Clean up
-  document.body.removeChild(link);
+    // Clean up the blob URL
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
-  // Show notification
-  showNotification(`Download started: ${filename}`, 'success');
+    showNotification(`Download completed: ${filename}`, 'success');
+  })
+  .catch(error => {
+    console.error('Download failed:', error);
+    // Fallback: open in new tab with a message
+    showNotification('Direct download blocked by browser. Opening PDF in new tab...', 'warning');
+    window.open(downloadUrl, '_blank');
+  });
 }
 
 // 显示下载选项模态框
