@@ -383,7 +383,6 @@ function showPaperDetails(paper, paperIndex) {
   // Add event listeners for footer buttons
   const bookmarkButton = document.getElementById('bookmarkButton');
   const downloadPdfButton = document.getElementById('downloadPdfButton');
-  const showPdfButton = document.getElementById('showPdfButton');
 
   if (bookmarkButton) {
     // In bookmarks page, this will always be a remove action
@@ -394,10 +393,6 @@ function showPaperDetails(paper, paperIndex) {
 
   if (downloadPdfButton) {
     downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
-  }
-
-  if (showPdfButton) {
-    showPdfButton.addEventListener('click', () => showPdfInModal(paper));
   }
 
   // Add tab functionality
@@ -438,11 +433,7 @@ function closeModal() {
   document.body.style.overflow = '';
 }
 
-// Show PDF in modal
-function showPdfInModal(paper) {
-  const pdfUrl = paper.url.replace('abs', 'pdf');
-  window.open(pdfUrl, '_blank');
-}
+
 
 // 下载论文PDF
 function downloadPaper(paper) {
