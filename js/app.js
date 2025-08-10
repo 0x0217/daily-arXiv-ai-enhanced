@@ -1127,6 +1127,7 @@ function parseJsonlData(jsonlText, date) {
         category: allCategories,
         summary: summary,
         details: paper.summary || '',
+        translatedSummary: paper.AI && paper.AI.translated_summary ? paper.AI.translated_summary : '',
         date: date,
         id: paper.id,
         motivation: paper.AI && paper.AI.motivation ? paper.AI.motivation : '',
@@ -1474,17 +1475,27 @@ function showPaperDetails(paper, paperIndex) {
       <p><strong>Categories: </strong>${categoryDisplay}</p>
       <p><strong>Date: </strong>${formatDate(paper.date)}</p>
 
-      <div class="translation-controls">
-        <button class="translate-button button secondary">
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
-          </svg>
-          Translate
-        </button>
-      </div>
+
 
       <h3>TL;DR</h3>
-      <div class="paper-summary-content">${highlightedSummary}</div>
+      <div class="summary-tabs">
+        ${paper.translatedSummary ? `
+        <div class="tab-buttons">
+          <button class="tab-button active" data-tab="translated">Translated</button>
+          <button class="tab-button" data-tab="original">Original</button>
+        </div>
+        <div class="tab-content">
+          <div class="tab-pane active" id="translated-summary">
+            ${paper.translatedSummary}
+          </div>
+          <div class="tab-pane" id="original-summary">
+            ${highlightedSummary}
+          </div>
+        </div>
+        ` : `
+        <div class="paper-summary-content">${highlightedSummary}</div>
+        `}
+      </div>
 
       <div class="paper-sections">
         ${paper.motivation ? `<div class="paper-section" data-section="motivation"><h4>Motivation</h4><p>${highlightedMotivation}</p></div>` : ''}
@@ -1508,6 +1519,12 @@ function showPaperDetails(paper, paperIndex) {
           </svg>
           Download PDF
         </button>
+        <button class="show-pdf-button" title="Show PDF">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" fill="currentColor"/>
+          </svg>
+          Show PDF
+        </button>
       </div>
 
 
@@ -1523,7 +1540,7 @@ function showPaperDetails(paper, paperIndex) {
     // Add event listeners to the action buttons
   const bookmarkButton = document.querySelector('.bookmark-button');
   const downloadButton = document.querySelector('.download-button');
-  const translateButton = document.querySelector('.translate-button');
+  const showPdfButton = document.querySelector('.show-pdf-button');
 
   if (bookmarkButton) {
     bookmarkButton.paperData = paper;
@@ -1535,9 +1552,26 @@ function showPaperDetails(paper, paperIndex) {
     downloadButton.addEventListener('click', () => downloadPaper(paper));
   }
 
-  if (translateButton) {
-    translateButton.addEventListener('click', () => translatePaperSummary(paper));
+  if (showPdfButton) {
+    showPdfButton.addEventListener('click', () => showPdfInModal(paper));
   }
+
+  // Add tab functionality
+  const tabButtons = document.querySelectorAll('.tab-button');
+  tabButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      const tab = e.target.getAttribute('data-tab');
+
+      // Remove active class from all tabs and buttons
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+      // Add active class to clicked button and corresponding tab
+      e.target.classList.add('active');
+      document.getElementById(`${tab}-summary`).classList.add('active');
+    });
+  });
+
   // 提示词来自：https://papers.cool/
   prompt = `请你阅读这篇文章${paper.url.replace('abs', 'pdf')},总结一下这篇文章解决的问题、相关工作、研究方法、做了什么实验及其结果、结论，最后整体总结一下这篇文章的内容`
   document.getElementById('kimiChatLink').href = `https://www.kimi.com/_prefill_chat?prefill_prompt=${prompt}&system_prompt=你是一个学术助手，后面的对话将围绕着以下论文内容进行，已经通过链接给出了论文的PDF和论文已有的FAQ。用户将继续向你咨询论文的相关问题，请你作出专业的回答，不要出现第一人称，当涉及到分点回答时，鼓励你以markdown格式输出。&send_immediately=true&force_search=false`;
@@ -1561,6 +1595,12 @@ function closeModal() {
 
   modal.classList.remove('active');
   document.body.style.overflow = '';
+}
+
+// Show PDF in modal
+function showPdfInModal(paper) {
+  const pdfUrl = paper.url.replace('abs', 'pdf');
+  window.open(pdfUrl, '_blank');
 }
 
 // 导航到上一篇论文

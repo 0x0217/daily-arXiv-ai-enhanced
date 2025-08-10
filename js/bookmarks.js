@@ -342,7 +342,24 @@ function showPaperDetails(paper, paperIndex) {
       <p><strong>Bookmarked: </strong>${formatDate(paper.bookmarkedAt)}</p>
 
       <h3>TL;DR</h3>
-      <div class="paper-summary-content">${paper.summary}</div>
+      <div class="summary-tabs">
+        ${paper.translatedSummary ? `
+        <div class="tab-buttons">
+          <button class="tab-button active" data-tab="translated">Translated</button>
+          <button class="tab-button" data-tab="original">Original</button>
+        </div>
+        <div class="tab-content">
+          <div class="tab-pane active" id="translated-summary">
+            ${paper.translatedSummary}
+          </div>
+          <div class="tab-pane" id="original-summary">
+            ${paper.summary}
+          </div>
+        </div>
+        ` : `
+        <div class="paper-summary-content">${paper.summary}</div>
+        `}
+      </div>
 
       <div class="paper-sections">
         ${paper.motivation ? `<div class="paper-section"><h4>Motivation</h4><p>${paper.motivation}</p></div>` : ''}
@@ -366,6 +383,12 @@ function showPaperDetails(paper, paperIndex) {
           </svg>
           Download PDF
         </button>
+        <button class="show-pdf-paper-button" onclick="showPdfInModal(paper)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" fill="currentColor"/>
+          </svg>
+          Show PDF
+        </button>
       </div>
     </div>
   `;
@@ -375,6 +398,22 @@ function showPaperDetails(paper, paperIndex) {
   document.getElementById('paperLink').href = paper.url;
   document.getElementById('pdfLink').href = paper.url.replace('abs', 'pdf');
   document.getElementById('htmlLink').href = paper.url.replace('abs', 'html');
+
+  // Add tab functionality
+  const tabButtons = document.querySelectorAll('.tab-button');
+  tabButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      const tab = e.target.getAttribute('data-tab');
+
+      // Remove active class from all tabs and buttons
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+      // Add active class to clicked button and corresponding tab
+      e.target.classList.add('active');
+      document.getElementById(`${tab}-summary`).classList.add('active');
+    });
+  });
 
   // 更新论文位置信息
   const paperPosition = document.getElementById('paperPosition');
@@ -396,6 +435,12 @@ function closeModal() {
 
   modal.classList.remove('active');
   document.body.style.overflow = '';
+}
+
+// Show PDF in modal
+function showPdfInModal(paper) {
+  const pdfUrl = paper.url.replace('abs', 'pdf');
+  window.open(pdfUrl, '_blank');
 }
 
 // 格式化日期

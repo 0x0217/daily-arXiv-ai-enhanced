@@ -54,14 +54,15 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
                 return item
             except Exception as json_e:
                 print(f"Failed to fix JSON for {item['id']}: {json_e} {json_str}", file=sys.stderr)
-        
+
         # 如果修复失败，返回错误状态
         item['AI'] = {
             "tldr": "Error",
             "motivation": "Error",
             "method": "Error",
             "result": "Error",
-            "conclusion": "Error"
+            "conclusion": "Error",
+            "translated_summary": "Error"
         }
     return item
 
@@ -69,14 +70,14 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
     """并行处理所有数据项"""
     llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
     print('Connect to:', model_name, file=sys.stderr)
-    
+
     prompt_template = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(system),
         HumanMessagePromptTemplate.from_template(template=template)
     ])
 
     chain = prompt_template | llm
-    
+
     # 使用线程池并行处理
     processed_data = [None] * len(data)  # 预分配结果列表
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -85,7 +86,7 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
             executor.submit(process_single_item, chain, item, language): idx
             for idx, item in enumerate(data)
         }
-        
+
         # 使用tqdm显示进度
         for future in tqdm(
             as_completed(future_to_idx),
@@ -100,7 +101,7 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                 print(f"Item at index {idx} generated an exception: {e}", file=sys.stderr)
                 # 保持原始数据
                 processed_data[idx] = data[idx]
-    
+
     return processed_data
 
 def main():
@@ -130,7 +131,7 @@ def main():
 
     data = unique_data
     print('Open:', args.data, file=sys.stderr)
-    
+
     # 并行处理所有数据
     processed_data = process_all_items(
         data,
@@ -138,7 +139,7 @@ def main():
         language,
         args.max_workers
     )
-    
+
     # 保存结果
     with open(target_file, "w") as f:
         for item in processed_data:

@@ -710,6 +710,7 @@ function parseJsonlData(jsonlText, date) {
         category: allCategories,
         summary: summary,
         details: paper.summary || '',
+        translatedSummary: paper.AI && paper.AI.translated_summary ? paper.AI.translated_summary : '',
         date: date,
         id: paper.id,
         motivation: paper.AI && paper.AI.motivation ? paper.AI.motivation : '',

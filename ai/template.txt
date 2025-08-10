@@ -1,4 +1,4 @@
-Please analyze the following abstract of papers. 
+Please analyze the following abstract of papers and translate the original abstract to {language}.
 
 Content:
 {content}
