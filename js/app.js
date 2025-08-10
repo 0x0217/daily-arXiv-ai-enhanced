@@ -232,7 +232,29 @@ function updateBookmarkButton(paper) {
 
 // 下载论文PDF
 function downloadPaper(paper) {
-  showDownloadModal(paper);
+  // Generate filename with special prefix
+  const safeTitle = paper.title
+    .substring(0, 50)
+    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+
+  const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
+  const downloadUrl = paper.url.replace('abs', 'pdf');
+
+  // Create download link and trigger download immediately
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  link.target = '_blank';
+
+  // Add to DOM and trigger download
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Show brief notification
+  showNotification(`Download started: ${filename}`, 'success');
 }
 
 // 显示下载选项模态框
@@ -1371,18 +1393,6 @@ function showPaperDetails(paper, paperIndex) {
           </svg>
           ${isBookmarked(paper) ? 'Bookmarked' : 'Bookmark'}
         </button>
-        <button class="download-button" title="Download PDF">
-          <svg class="download-icon" viewBox="0 0 24 24" width="20" height="20">
-            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="none" stroke="currentColor" stroke-width="2"/>
-          </svg>
-          Download PDF
-        </button>
-        <button class="show-pdf-button" title="Show PDF">
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" fill="currentColor"/>
-          </svg>
-          Show PDF
-        </button>
       </div>
 
 
@@ -1397,17 +1407,16 @@ function showPaperDetails(paper, paperIndex) {
 
     // Add event listeners to the action buttons
   const bookmarkButton = document.querySelector('.bookmark-button');
-  const downloadButton = document.querySelector('.download-button');
-  const showPdfButton = document.querySelector('.show-pdf-button');
+  const downloadPdfButton = document.getElementById('downloadPdfButton');
+  const showPdfButton = document.getElementById('showPdfButton');
 
   if (bookmarkButton) {
     bookmarkButton.paperData = paper;
     bookmarkButton.addEventListener('click', () => toggleBookmark(paper));
   }
 
-  if (downloadButton) {
-    downloadButton.paperData = paper;
-    downloadButton.addEventListener('click', () => downloadPaper(paper));
+  if (downloadPdfButton) {
+    downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
   }
 
   if (showPdfButton) {
@@ -1430,9 +1439,7 @@ function showPaperDetails(paper, paperIndex) {
     });
   });
 
-  // 提示词来自：https://papers.cool/
-  prompt = `请你阅读这篇文章${paper.url.replace('abs', 'pdf')},总结一下这篇文章解决的问题、相关工作、研究方法、做了什么实验及其结果、结论，最后整体总结一下这篇文章的内容`
-  document.getElementById('kimiChatLink').href = `https://www.kimi.com/_prefill_chat?prefill_prompt=${prompt}&system_prompt=你是一个学术助手，后面的对话将围绕着以下论文内容进行，已经通过链接给出了论文的PDF和论文已有的FAQ。用户将继续向你咨询论文的相关问题，请你作出专业的回答，不要出现第一人称，当涉及到分点回答时，鼓励你以markdown格式输出。&send_immediately=true&force_search=false`;
+  // Removed Kimi chat integration
 
   // 更新论文位置信息
   const paperPosition = document.getElementById('paperPosition');

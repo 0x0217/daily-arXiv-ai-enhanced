@@ -377,18 +377,6 @@ function showPaperDetails(paper, paperIndex) {
           </svg>
           Remove Bookmark
         </button>
-        <button class="download-paper-button" onclick="downloadPaper(paper)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="none" stroke="currentColor" stroke-width="2"/>
-          </svg>
-          Download PDF
-        </button>
-        <button class="show-pdf-paper-button" onclick="showPdfInModal(paper)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" fill="currentColor"/>
-          </svg>
-          Show PDF
-        </button>
       </div>
     </div>
   `;
@@ -398,6 +386,18 @@ function showPaperDetails(paper, paperIndex) {
   document.getElementById('paperLink').href = paper.url;
   document.getElementById('pdfLink').href = paper.url.replace('abs', 'pdf');
   document.getElementById('htmlLink').href = paper.url.replace('abs', 'html');
+
+  // Add event listeners for footer buttons
+  const downloadPdfButton = document.getElementById('downloadPdfButton');
+  const showPdfButton = document.getElementById('showPdfButton');
+
+  if (downloadPdfButton) {
+    downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
+  }
+
+  if (showPdfButton) {
+    showPdfButton.addEventListener('click', () => showPdfInModal(paper));
+  }
 
   // Add tab functionality
   const tabButtons = document.querySelectorAll('.tab-button');
@@ -441,6 +441,35 @@ function closeModal() {
 function showPdfInModal(paper) {
   const pdfUrl = paper.url.replace('abs', 'pdf');
   window.open(pdfUrl, '_blank');
+}
+
+// 下载论文PDF
+function downloadPaper(paper) {
+  // Generate filename with special prefix
+  const safeTitle = paper.title
+    .substring(0, 50)
+    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+
+  const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
+  const downloadUrl = paper.url.replace('abs', 'pdf');
+
+  // Create download link and trigger download immediately
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  link.target = '_blank';
+
+  // Add to DOM and trigger download
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Show brief notification if showNotification exists
+  if (typeof showNotification === 'function') {
+    showNotification(`Download started: ${filename}`, 'success');
+  }
 }
 
 // 格式化日期
