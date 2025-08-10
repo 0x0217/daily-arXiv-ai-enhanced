@@ -20,6 +20,8 @@ if [ -z "$OPENAI_API_KEY" ]; then
     echo "   export LANGUAGE=\"Chinese\"                           # 语言设置 / Language setting"
     echo "   export CATEGORIES=\"cs.CV, cs.CL\"                    # 关注分类 / Categories of interest"
     echo "   export MODEL_NAME=\"gpt-4o-mini\"                     # 模型名称 / Model name"
+    echo "   export INCLUDE_KEYWORDS=\"transformer, attention\"      # 包含关键词 / Include keywords"
+    echo "   export EXCLUDE_KEYWORDS=\"survey, review\"              # 排除关键词 / Exclude keywords"
     echo ""
     echo "💡 设置后重新运行此脚本即可进行完整测试 / After setting, rerun this script for complete testing"
     echo "🚀 或者继续运行部分流程（爬取+去重检查）/ Or continue with partial workflow (crawl + dedup check)"
@@ -33,17 +35,21 @@ if [ -z "$OPENAI_API_KEY" ]; then
 else
     echo "✅ OPENAI_API_KEY 已设置 / OPENAI_API_KEY is set"
     PARTIAL_MODE=false
-    
+
     # 设置默认值 / Set default values
     export LANGUAGE="${LANGUAGE:-Chinese}"
     export CATEGORIES="${CATEGORIES:-cs.CV, cs.CL}"
     export MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
     export OPENAI_BASE_URL="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
-    
+    export INCLUDE_KEYWORDS="${INCLUDE_KEYWORDS:-}"
+    export EXCLUDE_KEYWORDS="${EXCLUDE_KEYWORDS:-}"
+
     echo "🔧 当前配置 / Current configuration:"
     echo "   LANGUAGE: $LANGUAGE"
     echo "   CATEGORIES: $CATEGORIES"
     echo "   MODEL_NAME: $MODEL_NAME"
+    echo "   INCLUDE_KEYWORDS: $INCLUDE_KEYWORDS"
+    echo "   EXCLUDE_KEYWORDS: $EXCLUDE_KEYWORDS"
     echo "   OPENAI_BASE_URL: $OPENAI_BASE_URL"
 fi
 
@@ -75,7 +81,7 @@ if [ ! -f "../data/${today}.jsonl" ]; then
     exit 1
 fi
 
-# 第二步：检查去重 / Step 2: Check duplicates  
+# 第二步：检查去重 / Step 2: Check duplicates
 echo "步骤2：执行去重检查... / Step 2: Performing intelligent deduplication check..."
 python daily_arxiv/check_stats.py
 dedup_exit_code=$?
@@ -105,7 +111,7 @@ if [ "$PARTIAL_MODE" = "false" ]; then
     echo "步骤3：AI增强处理... / Step 3: AI enhancement processing..."
     cd ai
     python enhance.py --data ../data/${today}.jsonl
-    
+
     if [ $? -ne 0 ]; then
         echo "❌ AI处理失败 / AI processing failed"
         exit 1
@@ -123,13 +129,13 @@ cd to_md
 if [ "$PARTIAL_MODE" = "false" ] && [ -f "../data/${today}_AI_enhanced_${LANGUAGE}.jsonl" ]; then
     echo "📄 使用AI增强后的数据进行转换... / Using AI enhanced data for conversion..."
     python convert.py --data ../data/${today}_AI_enhanced_${LANGUAGE}.jsonl
-    
+
     if [ $? -ne 0 ]; then
         echo "❌ Markdown转换失败 / Markdown conversion failed"
         exit 1
     fi
     echo "✅ AI增强版Markdown转换完成 / AI enhanced Markdown conversion completed"
-    
+
 else
     if [ "$PARTIAL_MODE" = "true" ]; then
         echo "⏭️  跳过Markdown转换（部分模式，需要AI增强数据）/ Skipping Markdown conversion (partial mode, requires AI enhanced data)"
