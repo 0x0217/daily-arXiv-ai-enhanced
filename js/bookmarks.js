@@ -392,7 +392,38 @@ function showPaperDetails(paper, paperIndex) {
   }
 
   if (downloadPdfButton) {
-    downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
+    downloadPdfButton.addEventListener('click', () => {
+      // Direct download without modal
+      const pdfUrl = paper.url.replace('abs', 'pdf');
+      const filename = `${paper.id}_${paper.title.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if (typeof showNotification === 'function') {
+        showNotification('Download started!', 'success');
+      }
+    });
+  }
+
+  // Add navigation button event listeners
+  const prevPaperButton = document.getElementById('prevPaperButton');
+  const nextPaperButton = document.getElementById('nextPaperButton');
+
+  if (prevPaperButton) {
+    prevPaperButton.addEventListener('click', () => {
+      navigateToPreviousBookmark();
+    });
+  }
+
+  if (nextPaperButton) {
+    nextPaperButton.addEventListener('click', () => {
+      navigateToNextBookmark();
+    });
   }
 
   // Add tab functionality
@@ -565,27 +596,51 @@ function initEventListeners() {
 
   // 键盘事件
   document.addEventListener('keydown', (event) => {
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable
+    );
+
     if (event.key === 'Escape') {
       const paperModal = document.getElementById('paperModal');
       if (paperModal.classList.contains('active')) {
         closeModal();
       }
     }
+    // Left/right arrow navigation in modal
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      const paperModal = document.getElementById('paperModal');
+      if (paperModal.classList.contains('active')) {
+        event.preventDefault();
+
+        if (event.key === 'ArrowLeft') {
+          navigateToPreviousBookmark();
+        } else if (event.key === 'ArrowRight') {
+          navigateToNextBookmark();
+        }
+      }
+    }
   });
 }
 
-// 简单的下载功能（复用主页面逻辑）
-function downloadPaper(paper) {
-  const pdfUrl = paper.url.replace('abs', 'pdf');
-  const filename = `${paper.id}_${paper.title.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+// Navigation functions for bookmarks
+function navigateToPreviousBookmark() {
+  if (currentFilteredBookmarks.length === 0) return;
 
-  const link = document.createElement('a');
-  link.href = pdfUrl;
-  link.download = filename;
-  link.target = '_blank';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  showNotification('Download started!', 'success');
+  currentBookmarkIndex = currentBookmarkIndex > 0 ? currentBookmarkIndex - 1 : currentFilteredBookmarks.length - 1;
+  const paper = currentFilteredBookmarks[currentBookmarkIndex];
+  showPaperDetails(paper, currentBookmarkIndex + 1);
 }
+
+function navigateToNextBookmark() {
+  if (currentFilteredBookmarks.length === 0) return;
+
+  currentBookmarkIndex = currentBookmarkIndex < currentFilteredBookmarks.length - 1 ? currentBookmarkIndex + 1 : 0;
+  const paper = currentFilteredBookmarks[currentBookmarkIndex];
+  showPaperDetails(paper, currentBookmarkIndex + 1);
+}
+
+// Import download functions from main app
+// Note: showDownloadModal and related functions are loaded from app.js

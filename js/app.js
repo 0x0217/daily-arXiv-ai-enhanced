@@ -618,6 +618,23 @@ function showOriginalContent(paper) {
     abstract: paper.details || ''
   });
 
+  // Remove translation attributes
+  const elementsToReset = [
+    '.paper-summary-content',
+    '.paper-section[data-section="motivation"] p',
+    '.paper-section[data-section="method"] p',
+    '.paper-section[data-section="result"] p',
+    '.paper-section[data-section="conclusion"] p',
+    '.original-abstract'
+  ];
+
+  elementsToReset.forEach(selector => {
+    const element = document.querySelector(selector);
+    if (element) {
+      element.removeAttribute('data-translated');
+    }
+  });
+
   const translateButton = document.querySelector('.translate-button');
   if (translateButton) {
     translateButton.innerHTML = `
@@ -625,7 +642,7 @@ function showOriginalContent(paper) {
         <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
       </svg>
       Translate
-    `;
+`;
     translateButton.onclick = () => translatePaperSummary(paper);
   }
 }
@@ -643,31 +660,37 @@ function updatePaperDetailsWithTranslation(paper, translations) {
   const summaryContent = document.querySelector('.paper-summary-content');
   if (summaryContent) {
     summaryContent.innerHTML = translations.summary;
+    summaryContent.setAttribute('data-translated', 'true');
   }
 
   const motivationSection = document.querySelector('.paper-section[data-section="motivation"] p');
   if (motivationSection && translations.motivation) {
     motivationSection.innerHTML = translations.motivation;
+    motivationSection.setAttribute('data-translated', 'true');
   }
 
   const methodSection = document.querySelector('.paper-section[data-section="method"] p');
   if (methodSection && translations.method) {
     methodSection.innerHTML = translations.method;
+    methodSection.setAttribute('data-translated', 'true');
   }
 
   const resultSection = document.querySelector('.paper-section[data-section="result"] p');
   if (resultSection && translations.result) {
     resultSection.innerHTML = translations.result;
+    resultSection.setAttribute('data-translated', 'true');
   }
 
   const conclusionSection = document.querySelector('.paper-section[data-section="conclusion"] p');
   if (conclusionSection && translations.conclusion) {
     conclusionSection.innerHTML = translations.conclusion;
+    conclusionSection.setAttribute('data-translated', 'true');
   }
 
   const abstractSection = document.querySelector('.original-abstract');
   if (abstractSection && translations.abstract) {
     abstractSection.innerHTML = translations.abstract;
+    abstractSection.setAttribute('data-translated', 'true');
   }
 }
 
@@ -1450,6 +1473,22 @@ function showPaperDetails(paper, paperIndex) {
 
   if (downloadPdfButton) {
     downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
+  }
+
+  // Add navigation button event listeners
+  const prevPaperButton = document.getElementById('prevPaperButton');
+  const nextPaperButton = document.getElementById('nextPaperButton');
+
+  if (prevPaperButton) {
+    prevPaperButton.addEventListener('click', () => {
+      navigateToPreviousPaper();
+    });
+  }
+
+  if (nextPaperButton) {
+    nextPaperButton.addEventListener('click', () => {
+      navigateToNextPaper();
+    });
   }
 
   // Add tab functionality

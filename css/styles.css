@@ -25,6 +25,12 @@
   --gold-gradient: linear-gradient(135deg, #ffd700 0%, #d4af37 100%);
 }
 
+/* AppleMyungjo font for translations */
+@font-face {
+  font-family: 'AppleMyungjo';
+  src: local('AppleMyungjo');
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -736,7 +742,50 @@ main {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 8px;
+}
+
+.navigation-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navigation-button {
+  padding: 8px;
+  border-radius: 8px;
+  background-color: var(--button-secondary-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.navigation-button:hover {
+  background-color: var(--button-secondary-hover-bg);
+  color: var(--text-primary);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.navigation-button:active {
+  transform: translateY(0);
+}
+
+.navigation-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.navigation-button:disabled:hover {
+  background-color: var(--button-secondary-bg);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+  transform: none;
 }
 
 .paper-modal-buttons {
@@ -1209,6 +1258,19 @@ input:checked + .toggle-slider:before {
   .paper-modal-content {
     width: 95%;
     max-height: 85vh;
+  }
+
+  .navigation-controls {
+    gap: 8px;
+  }
+
+  .navigation-button {
+    padding: 6px;
+  }
+
+  .navigation-hint {
+    font-size: 11px;
+    text-align: center;
   }
 
   .paper-sections {
@@ -2264,6 +2326,18 @@ footer {
 
 .tab-pane.active {
   display: block;
+}
+
+/* Translation content styling */
+#translated-summary {
+  font-family: 'AppleMyungjo', serif;
+}
+
+/* Apply AppleMyungjo font to all translated content */
+.paper-section p[data-translated="true"],
+.original-abstract[data-translated="true"],
+.paper-summary-content[data-translated="true"] {
+  font-family: 'AppleMyungjo', serif;
 }
 
 @keyframes fadeIn {

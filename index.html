@@ -177,8 +177,20 @@
                 </div>
                 <div class="paper-modal-footer">
                     <div class="paper-navigation">
+                        <div class="navigation-controls">
+                            <button id="prevPaperButton" class="icon-button navigation-button" title="Previous paper (←)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <span id="paperPosition" class="paper-position">-</span>
+                            <button id="nextPaperButton" class="icon-button navigation-button" title="Next paper (→)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
                         <span class="navigation-hint">← → to navigate • space for random</span>
-                        <span id="paperPosition" class="paper-position">-</span>
                     </div>
                     <div class="paper-modal-buttons">
                     <button id="bookmarkButton" class="button icon-button" title="Add to bookmarks">
