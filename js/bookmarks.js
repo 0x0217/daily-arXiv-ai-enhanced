@@ -440,7 +440,42 @@ function showPaperDetails(paper, paperIndex) {
   // 更新论文位置信息
   const paperPosition = document.getElementById('paperPosition');
   if (paperPosition && currentFilteredBookmarks.length > 0) {
-    paperPosition.textContent = `${currentBookmarkIndex + 1} / ${currentFilteredBookmarks.length}`;
+    paperPosition.value = `${currentBookmarkIndex + 1} / ${currentFilteredBookmarks.length}`;
+
+    // Add enter key listener for direct page navigation
+    paperPosition.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        const input = e.target.value.trim();
+        const pageMatch = input.match(/^(\d+)/); // Extract the number before "/"
+
+        if (pageMatch) {
+          const targetPage = parseInt(pageMatch[1]);
+          if (targetPage >= 1 && targetPage <= currentFilteredBookmarks.length) {
+            const targetIndex = targetPage - 1;
+            currentBookmarkIndex = targetIndex;
+            showPaperDetails(currentFilteredBookmarks[targetIndex], targetIndex + 1);
+          } else {
+            showNotification(`Page must be between 1 and ${currentFilteredBookmarks.length}`, 'error');
+            paperPosition.value = `${currentBookmarkIndex + 1} / ${currentFilteredBookmarks.length}`;
+          }
+        } else {
+          showNotification('Invalid page format. Enter a number.', 'error');
+          paperPosition.value = `${currentBookmarkIndex + 1} / ${currentFilteredBookmarks.length}`;
+        }
+        paperPosition.blur(); // Remove focus after navigation
+      }
+    };
+
+    // Handle focus/blur events for better UX
+    paperPosition.onfocus = () => {
+      const currentPage = currentBookmarkIndex + 1;
+      paperPosition.value = currentPage.toString();
+      paperPosition.select(); // Select all text for easy editing
+    };
+
+    paperPosition.onblur = () => {
+      paperPosition.value = `${currentBookmarkIndex + 1} / ${currentFilteredBookmarks.length}`;
+    };
   }
 
   modal.classList.add('active');
@@ -461,9 +496,53 @@ function closeModal() {
 
 
 
-// 下载论文PDF - Show download modal
+// 下载论文PDF - Direct download with predefined filename
 function downloadPaper(paper) {
-  showDownloadModal(paper);
+  // Generate filename with special prefix
+  const safeTitle = paper.title
+    .substring(0, 50)
+    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+
+  const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
+  const downloadUrl = paper.url.replace('abs', 'pdf');
+
+  showNotification('Starting download...', 'info');
+
+  fetch(downloadUrl, {
+    method: 'GET',
+    mode: 'cors',
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.blob();
+  })
+  .then(blob => {
+    // Create blob URL and download
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the blob URL
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+    showNotification(`Download completed: ${filename}`, 'success');
+  })
+  .catch(error => {
+    console.error('Download failed:', error);
+    // Fallback: open in new tab with a message
+    showNotification('Direct download blocked by browser. Opening PDF in new tab...', 'warning');
+    window.open(downloadUrl, '_blank');
+  });
 }
 
 // 显示下载选项模态框

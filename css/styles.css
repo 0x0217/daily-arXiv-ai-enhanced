@@ -872,6 +872,31 @@ main {
   font-weight: 600;
 }
 
+.paper-position-input {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  text-align: center;
+  width: 80px;
+  transition: var(--transition);
+}
+
+.paper-position-input:hover {
+  border-color: var(--border-color);
+  background: var(--background-hover);
+}
+
+.paper-position-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background: white;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
 /* 日期选择器样式 */
 .date-picker-modal {
   position: fixed;
