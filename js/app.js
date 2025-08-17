@@ -1355,21 +1355,27 @@ function showPaperDetails(paper, paperIndex) {
   const downloadPdfButton = document.getElementById('downloadPdfButton');
 
     if (bookmarkButton) {
+    // Remove any existing event listeners to prevent multiple actions
+    bookmarkButton.replaceWith(bookmarkButton.cloneNode(true));
+    const newBookmarkButton = document.getElementById('bookmarkButton');
+
     // Update bookmark button appearance based on current state
     const isBookmarkedPaper = isBookmarked(paper);
-    bookmarkButton.title = isBookmarkedPaper ? 'Remove from bookmarks' : 'Add to bookmarks';
-    const bookmarkIcon = bookmarkButton.querySelector('path');
+    newBookmarkButton.title = isBookmarkedPaper ? 'Remove from bookmarks' : 'Add to bookmarks';
+    const bookmarkIcon = newBookmarkButton.querySelector('path');
     if (bookmarkIcon) {
       bookmarkIcon.setAttribute('fill', isBookmarkedPaper ? '#ffd700' : 'none');
     }
 
-    bookmarkButton.paperData = paper;
-    bookmarkButton.addEventListener('click', () => {
-      toggleBookmark(paper);
+    // Store paper data as data attributes to avoid closure issues
+    newBookmarkButton.setAttribute('data-paper', JSON.stringify(paper));
+    newBookmarkButton.addEventListener('click', (e) => {
+      const currentPaper = JSON.parse(e.target.closest('button').getAttribute('data-paper'));
+      toggleBookmark(currentPaper);
       // Update button appearance after toggle
-      const newIsBookmarked = isBookmarked(paper);
-      bookmarkButton.title = newIsBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks';
-      const icon = bookmarkButton.querySelector('path');
+      const newIsBookmarked = isBookmarked(currentPaper);
+      newBookmarkButton.title = newIsBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks';
+      const icon = newBookmarkButton.querySelector('path');
       if (icon) {
         icon.setAttribute('fill', newIsBookmarked ? '#ffd700' : 'none');
       }
@@ -1377,15 +1383,27 @@ function showPaperDetails(paper, paperIndex) {
   }
 
   if (downloadPdfButton) {
-    downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
+    // Remove any existing event listeners to prevent multiple downloads
+    downloadPdfButton.replaceWith(downloadPdfButton.cloneNode(true));
+    const newDownloadButton = document.getElementById('downloadPdfButton');
+    // Store paper data as data attributes to avoid closure issues
+    newDownloadButton.setAttribute('data-paper', JSON.stringify(paper));
+    newDownloadButton.addEventListener('click', (e) => {
+      const currentPaper = JSON.parse(e.target.closest('button').getAttribute('data-paper'));
+      downloadPaper(currentPaper);
+    });
   }
 
 
 
-  // Add tab functionality
+  // Add tab functionality - only if tabs exist and don't already have listeners
   const tabButtons = document.querySelectorAll('.tab-button');
   tabButtons.forEach(button => {
-    button.addEventListener('click', (e) => {
+    // Remove existing listeners by cloning
+    const newButton = button.cloneNode(true);
+    button.replaceWith(newButton);
+
+    newButton.addEventListener('click', (e) => {
       const tab = e.target.getAttribute('data-tab');
 
       // Remove active class from all tabs and buttons

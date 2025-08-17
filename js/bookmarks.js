@@ -395,36 +395,59 @@ function showPaperDetails(paper, paperIndex) {
   const downloadPdfButton = document.getElementById('downloadPdfButton');
 
   if (bookmarkButton) {
+    // Remove any existing event listeners to prevent multiple actions
+    bookmarkButton.replaceWith(bookmarkButton.cloneNode(true));
+    const newBookmarkButton = document.getElementById('bookmarkButton');
+
+    // Store paper data as data attributes to avoid closure issues
+    newBookmarkButton.setAttribute('data-paper', JSON.stringify(paper));
     // In bookmarks page, this will always be a remove action
-    bookmarkButton.addEventListener('click', () => {
-      removeBookmark(paper.id, paper.date);
+    newBookmarkButton.addEventListener('click', (e) => {
+      const currentPaper = JSON.parse(e.target.closest('button').getAttribute('data-paper'));
+      removeBookmark(currentPaper.id, currentPaper.date);
     });
   }
 
   if (downloadPdfButton) {
-    downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
+    // Remove any existing event listeners to prevent multiple downloads
+    downloadPdfButton.replaceWith(downloadPdfButton.cloneNode(true));
+    const newDownloadButton = document.getElementById('downloadPdfButton');
+    // Store paper data as data attributes to avoid closure issues
+    newDownloadButton.setAttribute('data-paper', JSON.stringify(paper));
+    newDownloadButton.addEventListener('click', (e) => {
+      const currentPaper = JSON.parse(e.target.closest('button').getAttribute('data-paper'));
+      downloadPaper(currentPaper);
+    });
   }
 
-  // Add navigation button event listeners
+  // Add navigation button event listeners - remove existing listeners first
   const prevPaperButton = document.getElementById('prevPaperButton');
   const nextPaperButton = document.getElementById('nextPaperButton');
 
   if (prevPaperButton) {
-    prevPaperButton.addEventListener('click', () => {
+    prevPaperButton.replaceWith(prevPaperButton.cloneNode(true));
+    const newPrevButton = document.getElementById('prevPaperButton');
+    newPrevButton.addEventListener('click', () => {
       navigateToPreviousBookmark();
     });
   }
 
   if (nextPaperButton) {
-    nextPaperButton.addEventListener('click', () => {
+    nextPaperButton.replaceWith(nextPaperButton.cloneNode(true));
+    const newNextButton = document.getElementById('nextPaperButton');
+    newNextButton.addEventListener('click', () => {
       navigateToNextBookmark();
     });
   }
 
-  // Add tab functionality
+  // Add tab functionality - remove existing listeners first
   const tabButtons = document.querySelectorAll('.tab-button');
   tabButtons.forEach(button => {
-    button.addEventListener('click', (e) => {
+    // Remove existing listeners by cloning
+    const newButton = button.cloneNode(true);
+    button.replaceWith(newButton);
+
+    newButton.addEventListener('click', (e) => {
       const tab = e.target.getAttribute('data-tab');
 
       // Remove active class from all tabs and buttons
