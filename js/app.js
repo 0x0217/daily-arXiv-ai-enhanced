@@ -913,6 +913,22 @@ function initEventListeners() {
     });
   }
 
+  // Navigation button event listeners
+  const prevPaperButton = document.getElementById('prevPaperButton');
+  const nextPaperButton = document.getElementById('nextPaperButton');
+
+  if (prevPaperButton) {
+    prevPaperButton.addEventListener('click', () => {
+      navigateToPreviousPaper();
+    });
+  }
+
+  if (nextPaperButton) {
+    nextPaperButton.addEventListener('click', () => {
+      navigateToNextPaper();
+    });
+  }
+
   // 其他事件监听器...
   const categoryButtons = document.querySelectorAll('.category-button');
   categoryButtons.forEach(button => {
@@ -1475,21 +1491,7 @@ function showPaperDetails(paper, paperIndex) {
     downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
   }
 
-  // Add navigation button event listeners
-  const prevPaperButton = document.getElementById('prevPaperButton');
-  const nextPaperButton = document.getElementById('nextPaperButton');
 
-  if (prevPaperButton) {
-    prevPaperButton.addEventListener('click', () => {
-      navigateToPreviousPaper();
-    });
-  }
-
-  if (nextPaperButton) {
-    nextPaperButton.addEventListener('click', () => {
-      navigateToNextPaper();
-    });
-  }
 
   // Add tab functionality
   const tabButtons = document.querySelectorAll('.tab-button');
@@ -1535,19 +1537,29 @@ function closeModal() {
 
 // 导航到上一篇论文
 function navigateToPreviousPaper() {
-  if (currentFilteredPapers.length === 0) return;
+  if (currentFilteredPapers.length === 0) {
+    console.log('No filtered papers available for navigation');
+    return;
+  }
 
+  const oldIndex = currentPaperIndex;
   currentPaperIndex = currentPaperIndex > 0 ? currentPaperIndex - 1 : currentFilteredPapers.length - 1;
   const paper = currentFilteredPapers[currentPaperIndex];
+  console.log(`Navigating from ${oldIndex + 1} to ${currentPaperIndex + 1} of ${currentFilteredPapers.length}`);
   showPaperDetails(paper, currentPaperIndex + 1);
 }
 
 // 导航到下一篇论文
 function navigateToNextPaper() {
-  if (currentFilteredPapers.length === 0) return;
+  if (currentFilteredPapers.length === 0) {
+    console.log('No filtered papers available for navigation');
+    return;
+  }
 
+  const oldIndex = currentPaperIndex;
   currentPaperIndex = currentPaperIndex < currentFilteredPapers.length - 1 ? currentPaperIndex + 1 : 0;
   const paper = currentFilteredPapers[currentPaperIndex];
+  console.log(`Navigating from ${oldIndex + 1} to ${currentPaperIndex + 1} of ${currentFilteredPapers.length}`);
   showPaperDetails(paper, currentPaperIndex + 1);
 }
 

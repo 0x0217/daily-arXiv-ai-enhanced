@@ -2333,10 +2333,12 @@ footer {
   font-family: 'AppleMyungjo', serif;
 }
 
-/* Apply AppleMyungjo font to all translated content */
+/* Apply AppleMyungjo font to all translated content and original paper sections */
 .paper-section p[data-translated="true"],
 .original-abstract[data-translated="true"],
-.paper-summary-content[data-translated="true"] {
+.paper-summary-content[data-translated="true"],
+.paper-section p,
+.original-abstract {
   font-family: 'AppleMyungjo', serif;
 }
 
