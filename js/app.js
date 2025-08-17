@@ -230,55 +230,9 @@ function updateBookmarkButton(paper) {
   }
 }
 
-// 下载论文PDF
+// 下载论文PDF - Direct download without modal
 function downloadPaper(paper) {
-  // Generate filename with special prefix
-  const safeTitle = paper.title
-    .substring(0, 50)
-    .replace(/[^a-zA-Z0-9\s-]/g, '')
-    .replace(/\s+/g, '_')
-    .toLowerCase();
-
-  const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
-  const downloadUrl = paper.url.replace('abs', 'pdf');
-
-  // Since cross-origin download attribute doesn't work,
-  // we'll fetch the PDF and create a blob URL for download
-  showNotification('Starting download...', 'info');
-
-  fetch(downloadUrl, {
-    method: 'GET',
-    mode: 'cors',
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.blob();
-  })
-  .then(blob => {
-    // Create blob URL and download
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    link.style.display = 'none';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Clean up the blob URL
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-
-    showNotification(`Download completed: ${filename}`, 'success');
-  })
-  .catch(error => {
-    console.error('Download failed:', error);
-    // Fallback: open in new tab with a message
-    showNotification('Direct download blocked by browser. Opening PDF in new tab...', 'warning');
-    window.open(downloadUrl, '_blank');
-  });
+  showDownloadModal(paper);
 }
 
 // 显示下载选项模态框
@@ -399,27 +353,47 @@ function executeDownload(paper, format, customFilename) {
     }
   }
 
-  // 创建下载链接
-  const link = document.createElement('a');
-  link.href = downloadUrl;
-  link.download = filename;
-  link.target = '_blank';
+  showNotification('Starting download...', 'info');
 
-  // 添加到DOM并触发下载
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // Use fetch for better download handling
+  fetch(downloadUrl, {
+    method: 'GET',
+    mode: 'cors',
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.blob();
+  })
+  .then(blob => {
+    // Create blob URL and download
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
 
-  // 显示下载通知
-  showDownloadNotification(filename, format);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the blob URL
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+    showNotification(`Download completed: ${filename}`, 'success');
+    saveDownloadHistory(filename, format);
+  })
+  .catch(error => {
+    console.error('Download failed:', error);
+    // Fallback: open in new tab with a message
+    showNotification('Direct download blocked by browser. Opening PDF in new tab...', 'warning');
+    window.open(downloadUrl, '_blank');
+  });
 }
 
-// 显示下载通知
-function showDownloadNotification(filename, format) {
-  const formatText = format === 'pdf' ? 'PDF' : 'Source files';
-  showNotification(`${formatText} download started: ${filename}`, 'success');
-
-  // 保存下载历史
+// 保存下载历史
+function saveDownloadToHistory(filename, format) {
   saveDownloadHistory(filename, format);
 }
 
@@ -569,6 +543,15 @@ async function translatePaperSummary(paper, targetLang = 'zh') {
       translatedAbstract = await translateText(paper.details, targetLang);
     }
 
+    // 将翻译结果保存到paper对象中，以便收藏时保存
+    paper.translatedTitle = translatedTitle;
+    paper.translatedSummary = translatedSummary;
+    if (translatedMotivation) paper.translatedMotivation = translatedMotivation;
+    if (translatedMethod) paper.translatedMethod = translatedMethod;
+    if (translatedResult) paper.translatedResult = translatedResult;
+    if (translatedConclusion) paper.translatedConclusion = translatedConclusion;
+    if (translatedAbstract) paper.translatedAbstract = translatedAbstract;
+
     // 更新页面内容
     updatePaperDetailsWithTranslation(paper, {
       title: translatedTitle,
@@ -608,6 +591,22 @@ async function translatePaperSummary(paper, targetLang = 'zh') {
 
 // 显示原始内容
 function showOriginalContent(paper) {
+  // 恢复原始标题显示
+  const modalTitle = document.getElementById('modalTitle');
+  const paperIndex = currentPaperIndex + 1;
+  if (modalTitle) {
+    modalTitle.innerHTML = `<span class="paper-index-badge">${paperIndex}</span> ${paper.title}`;
+  }
+
+  // 清除paper对象中的翻译数据（这样重新翻译时会重新获取）
+  delete paper.translatedTitle;
+  delete paper.translatedSummary;
+  delete paper.translatedMotivation;
+  delete paper.translatedMethod;
+  delete paper.translatedResult;
+  delete paper.translatedConclusion;
+  delete paper.translatedAbstract;
+
   updatePaperDetailsWithTranslation(paper, {
     title: paper.title,
     summary: paper.summary,
@@ -653,7 +652,13 @@ function updatePaperDetailsWithTranslation(paper, translations) {
   const paperIndex = currentPaperIndex + 1;
 
   if (modalTitle) {
-    modalTitle.innerHTML = `<span class="paper-index-badge">${paperIndex}</span> ${translations.title}`;
+    modalTitle.innerHTML = `
+      <span class="paper-index-badge">${paperIndex}</span>
+      <div class="title-container">
+        <div class="original-title">${paper.title}</div>
+        <div class="translated-title">${translations.title}</div>
+      </div>
+    `;
   }
 
   // 更新各个部分的内容
@@ -1432,7 +1437,7 @@ function showPaperDetails(paper, paperIndex) {
             ${paper.translatedSummary}
           </div>
           <div class="tab-pane" id="original-summary">
-            ${highlightedSummary}
+            ${highlightedAbstract || highlightedSummary}
           </div>
         </div>
         ` : `

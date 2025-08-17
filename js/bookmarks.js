@@ -328,8 +328,18 @@ function showPaperDetails(paper, paperIndex) {
   // 重置模态框的滚动位置
   modalBody.scrollTop = 0;
 
-  // 在标题前添加索引号
-  modalTitle.innerHTML = `<span class="paper-index-badge">${paperIndex}</span> ${paper.title}`;
+  // 在标题前添加索引号，如果有翻译版本则显示双标题
+  if (paper.translatedTitle) {
+    modalTitle.innerHTML = `
+      <span class="paper-index-badge">${paperIndex}</span>
+      <div class="title-container">
+        <div class="original-title">${paper.title}</div>
+        <div class="translated-title">${paper.translatedTitle}</div>
+      </div>
+    `;
+  } else {
+    modalTitle.innerHTML = `<span class="paper-index-badge">${paperIndex}</span> ${paper.title}`;
+  }
 
   const categoryDisplay = Array.isArray(paper.category) ?
     paper.category.join(', ') : paper.category;
@@ -392,22 +402,7 @@ function showPaperDetails(paper, paperIndex) {
   }
 
   if (downloadPdfButton) {
-    downloadPdfButton.addEventListener('click', () => {
-      // Direct download without modal
-      const pdfUrl = paper.url.replace('abs', 'pdf');
-      const filename = `${paper.id}_${paper.title.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = filename;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      if (typeof showNotification === 'function') {
-        showNotification('Download started!', 'success');
-      }
-    });
+    downloadPdfButton.addEventListener('click', () => downloadPaper(paper));
   }
 
   // Add navigation button event listeners
@@ -466,24 +461,131 @@ function closeModal() {
 
 
 
-// 下载论文PDF
+// 下载论文PDF - Show download modal
 function downloadPaper(paper) {
-  // Generate filename with special prefix
+  showDownloadModal(paper);
+}
+
+// 显示下载选项模态框
+function showDownloadModal(paper) {
+  const modal = document.createElement('div');
+  modal.className = 'download-modal';
+  modal.innerHTML = `
+    <div class="download-modal-content">
+      <div class="download-modal-header">
+        <h3>Download Paper</h3>
+        <button class="close-download-modal">×</button>
+      </div>
+      <div class="download-modal-body">
+        <div class="download-info">
+          <p><strong>Title:</strong> ${paper.title.substring(0, 100)}${paper.title.length > 100 ? '...' : ''}</p>
+          <p><strong>ID:</strong> ${paper.id}</p>
+        </div>
+
+        <div class="download-options">
+          <h4>Download Options:</h4>
+
+          <div class="download-format-section">
+            <label>
+              <input type="radio" name="downloadFormat" value="pdf" checked>
+              PDF (Original)
+            </label>
+            <label>
+              <input type="radio" name="downloadFormat" value="source">
+              Source Files (if available)
+            </label>
+          </div>
+
+          <div class="filename-section">
+            <label for="customFilename">Custom Filename:</label>
+            <input type="text" id="customFilename" value="${generateFilename(paper)}" placeholder="Enter filename">
+            <small>The file extension will be added automatically</small>
+          </div>
+
+          <div class="folder-hint">
+            <p><strong>Note:</strong> Due to browser security limitations, files will be downloaded to your default Downloads folder. You can organize them later or use browser settings to specify download locations.</p>
+
+            <div class="download-tips">
+              <h5>💡 Download Tips:</h5>
+              <ul>
+                <li>Use Chrome's "Ask where to save each file" setting for custom locations</li>
+                <li>Create folders like "Papers", "Research", or "ArXiv" for better organization</li>
+                <li>Consider using a download manager for better file organization</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="download-modal-footer">
+        <button class="button secondary cancel-download">Cancel</button>
+        <button class="button primary confirm-download">Download</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Add event listeners
+  const closeButton = modal.querySelector('.close-download-modal');
+  const cancelButton = modal.querySelector('.cancel-download');
+  const confirmButton = modal.querySelector('.confirm-download');
+
+  const closeModal = () => {
+    document.body.removeChild(modal);
+  };
+
+  closeButton.addEventListener('click', closeModal);
+  cancelButton.addEventListener('click', closeModal);
+
+  confirmButton.addEventListener('click', () => {
+    const format = modal.querySelector('input[name="downloadFormat"]:checked').value;
+    const customFilename = modal.querySelector('#customFilename').value.trim();
+
+    executeDownload(paper, format, customFilename);
+    closeModal();
+  });
+
+  // Click background to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+}
+
+// Generate filename
+function generateFilename(paper) {
   const safeTitle = paper.title
     .substring(0, 50)
     .replace(/[^a-zA-Z0-9\s-]/g, '')
     .replace(/\s+/g, '_')
     .toLowerCase();
 
-  const filename = `ArXiv-AI-${paper.id}_${safeTitle}.pdf`;
-  const downloadUrl = paper.url.replace('abs', 'pdf');
+  return `${paper.id}_${safeTitle}`;
+}
 
-  // Since cross-origin download attribute doesn't work,
-  // we'll fetch the PDF and create a blob URL for download
-  if (typeof showNotification === 'function') {
-    showNotification('Starting download...', 'info');
+// Execute download
+function executeDownload(paper, format, customFilename) {
+  let downloadUrl;
+  let filename;
+
+  if (format === 'pdf') {
+    downloadUrl = paper.url.replace('abs', 'pdf');
+    filename = customFilename || generateFilename(paper);
+    if (!filename.endsWith('.pdf')) {
+      filename += '.pdf';
+    }
+  } else if (format === 'source') {
+    downloadUrl = paper.url.replace('abs', 'src');
+    filename = customFilename || generateFilename(paper);
+    if (!filename.endsWith('.tar.gz')) {
+      filename += '.tar.gz';
+    }
   }
 
+  showNotification('Starting download...', 'info');
+
+  // Use fetch for better download handling
   fetch(downloadUrl, {
     method: 'GET',
     mode: 'cors',
@@ -509,16 +611,12 @@ function downloadPaper(paper) {
     // Clean up the blob URL
     setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
-    if (typeof showNotification === 'function') {
-      showNotification(`Download completed: ${filename}`, 'success');
-    }
+    showNotification(`Download completed: ${filename}`, 'success');
   })
   .catch(error => {
     console.error('Download failed:', error);
     // Fallback: open in new tab with a message
-    if (typeof showNotification === 'function') {
-      showNotification('Direct download blocked by browser. Opening PDF in new tab...', 'warning');
-    }
+    showNotification('Direct download blocked by browser. Opening PDF in new tab...', 'warning');
     window.open(downloadUrl, '_blank');
   });
 }

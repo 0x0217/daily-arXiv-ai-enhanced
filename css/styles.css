@@ -703,13 +703,17 @@ main {
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   position: relative;
+  gap: 16px;
 }
 
 .paper-modal-header h2 {
   font-size: 20px;
   font-weight: 600;
+  flex: 1;
+  margin: 0;
+  line-height: 1.4;
 }
 
 .paper-modal-body {
@@ -2331,6 +2335,31 @@ footer {
 /* Translation content styling */
 #translated-summary {
   font-family: 'AppleMyungjo', serif;
+}
+
+/* Title container for showing both original and translated titles */
+.title-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.original-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.translated-title {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: 'AppleMyungjo', serif;
+  line-height: 1.4;
+  opacity: 0.9;
+  padding-left: 16px;
+  border-left: 3px solid var(--primary-color);
 }
 
 /* Apply AppleMyungjo font to all translated content and original paper sections */
