@@ -284,3 +284,5 @@
 2025-08-23_AI_enhanced_Korean.jsonl
 2025-08-25.jsonl
 2025-08-25_AI_enhanced_Korean.jsonl
+2025-08-27.jsonl
+2025-08-27_AI_enhanced_Korean.jsonl
