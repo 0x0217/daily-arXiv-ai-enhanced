@@ -654,3 +654,5 @@
 2026-05-23_AI_enhanced_Korean.jsonl
 2026-05-25.jsonl
 2026-05-25_AI_enhanced_Korean.jsonl
+2026-05-27.jsonl
+2026-05-27_AI_enhanced_Korean.jsonl
